@@ -9,6 +9,9 @@ class Escena(models.Model):
     """Un cuarto navegable de la casa virtual."""
 
     lengua = models.ForeignKey(Lengua, on_delete=models.CASCADE, related_name="escenas")
+    codigo = models.SlugField(
+        max_length=50, unique=True, help_text="Identificador estable para el frontend, ej. 'cocina'"
+    )
     nombre = models.CharField(max_length=100)
     fondo = models.URLField(help_text="URL del sprite/imagen de fondo (servido vía CDN)")
     orden = models.PositiveSmallIntegerField(default=0)

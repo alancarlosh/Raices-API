@@ -56,6 +56,10 @@ palabra en varias lenguas originarias. Ver `apps/progress/services.py`.
 ## Endpoints
 
 - `POST /api/token/` / `POST /api/token/refresh/` — JWT.
+- `GET /api/escenas/` — listado ligero (`id`, `codigo`, `nombre`, `lengua`, `orden`)
+  para que el frontend arme su grafo de navegación entre cuartos sin hardcodear
+  ids numéricos; referencia cada escena por su `codigo` (slug estable, ej.
+  `"cocina"`) y resuelve el `id` real desde aquí.
 - `GET /api/escenas/<id>/` — escena con sus objetos publicados (cacheada 15 min).
   Cada objeto expone `audio_ogg` y `audio_m4a`: Safari/iOS no soporta Ogg de forma
   confiable (solo Opus empacado en CAF), así que cada audio se sirve en dos

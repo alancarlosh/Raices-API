@@ -11,8 +11,9 @@ class ObjetoInteractivoInline(admin.TabularInline):
 
 @admin.register(Escena)
 class EscenaAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "lengua", "orden")
+    list_display = ("nombre", "codigo", "lengua", "orden")
     list_filter = ("lengua",)
+    prepopulated_fields = {"codigo": ("nombre",)}
     inlines = [ObjetoInteractivoInline]
 
 

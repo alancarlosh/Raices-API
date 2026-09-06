@@ -44,3 +44,15 @@ def test_escena_detail_requiere_autenticacion():
     respuesta = APIClient().get(f"/api/escenas/{escena.id}/")
 
     assert respuesta.status_code == 401
+
+
+def test_escena_list_expone_codigo_para_navegacion():
+    EscenaFactory(codigo="cocina", nombre="Cocina", orden=0)
+    EscenaFactory(codigo="sala", nombre="Sala", orden=1)
+    usuario = UsuarioFactory()
+
+    respuesta = _client_autenticado(usuario).get("/api/escenas/")
+
+    codigos = [e["codigo"] for e in respuesta.data]
+    assert codigos == ["cocina", "sala"]
+    assert "id" in respuesta.data[0]

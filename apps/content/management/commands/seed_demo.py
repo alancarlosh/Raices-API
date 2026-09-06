@@ -62,11 +62,13 @@ class Command(BaseCommand):
         )
 
         for orden, (nombre_escena, objetos) in enumerate(ESCENAS_SEED.items()):
+            codigo_escena = nombre_escena.lower()
             escena, _ = Escena.objects.get_or_create(
-                nombre=nombre_escena,
-                lengua=lengua,
+                codigo=codigo_escena,
                 defaults={
-                    "fondo": f"https://cdn.example.com/placeholder/fondos/{nombre_escena.lower()}.png",
+                    "nombre": nombre_escena,
+                    "lengua": lengua,
+                    "fondo": f"https://cdn.example.com/placeholder/fondos/{codigo_escena}.png",
                     "orden": orden,
                 },
             )

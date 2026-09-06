@@ -9,6 +9,7 @@ class EscenaFactory(factory.django.DjangoModelFactory):
         model = Escena
 
     lengua = factory.SubFactory(LenguaFactory)
+    codigo = factory.Sequence(lambda n: f"cuarto{n}")
     nombre = factory.Sequence(lambda n: f"Cuarto {n}")
     fondo = "https://cdn.example.com/fondo.png"
 

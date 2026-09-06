@@ -16,5 +16,16 @@ class EscenaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Escena
-        fields = ["id", "nombre", "lengua", "fondo", "objetos"]
+        fields = ["id", "codigo", "nombre", "lengua", "fondo", "objetos"]
+        read_only_fields = fields
+
+
+class EscenaListSerializer(serializers.ModelSerializer):
+    """Listado ligero para que el frontend arme su grafo de navegación entre cuartos."""
+
+    lengua = serializers.CharField(source="lengua.codigo", read_only=True)
+
+    class Meta:
+        model = Escena
+        fields = ["id", "codigo", "nombre", "lengua", "orden"]
         read_only_fields = fields

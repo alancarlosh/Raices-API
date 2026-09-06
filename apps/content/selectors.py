@@ -17,5 +17,9 @@ def escena_get_publicada(*, escena_id: int) -> Escena:
     )
 
 
+def escena_list():
+    return Escena.objects.select_related("lengua")
+
+
 def objeto_get(*, objeto_id: int) -> ObjetoInteractivo:
     return get_object_or_404(ObjetoInteractivo.objects.select_related("escena", "lengua"), pk=objeto_id)

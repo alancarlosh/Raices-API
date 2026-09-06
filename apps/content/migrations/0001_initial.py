@@ -17,6 +17,7 @@ class Migration(migrations.Migration):
             name='Escena',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('codigo', models.SlugField(help_text="Identificador estable para el frontend, ej. 'cocina'", max_length=50, unique=True)),
                 ('nombre', models.CharField(max_length=100)),
                 ('fondo', models.URLField(help_text='URL del sprite/imagen de fondo (servido vía CDN)')),
                 ('orden', models.PositiveSmallIntegerField(default=0)),
