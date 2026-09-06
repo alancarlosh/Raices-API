@@ -40,6 +40,9 @@ palabra en varias lenguas originarias. Ver `apps/progress/services.py`.
 
 - `POST /api/token/` / `POST /api/token/refresh/` — JWT.
 - `GET /api/escenas/<id>/` — escena con sus objetos publicados (cacheada 15 min).
+  Cada objeto expone `audio_ogg` y `audio_m4a`: Safari/iOS no soporta Ogg de forma
+  confiable (solo Opus empacado en CAF), así que cada audio se sirve en dos
+  formatos y el frontend debe usar múltiples `<source>` con fallback.
 - `POST /api/objetos/<id>/descubrir/` — marca un objeto como descubierto.
 - `POST /api/objetos/<id>/intento-escritura/` — body `{"texto_ingresado": "..."}`.
 - `GET /api/progreso/` — % de objetos descubiertos por escena.

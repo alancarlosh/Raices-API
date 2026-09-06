@@ -34,7 +34,12 @@ class ObjetoInteractivo(models.Model):
     lengua = models.ForeignKey(Lengua, on_delete=models.CASCADE, related_name="objetos")
     palabra = models.CharField(max_length=150, help_text="Palabra en la lengua originaria (NFC)")
     sprite = models.URLField(help_text="URL del sprite del objeto (servido vía CDN)")
-    audio = models.URLField(help_text="URL del audio de pronunciación (servido vía CDN)")
+    audio_ogg = models.URLField(
+        help_text="URL del audio en OGG/Opus (formato principal, servido vía CDN)",
+    )
+    audio_m4a = models.URLField(
+        help_text="URL del audio en AAC/M4A (fallback para Safari/iOS, que no soporta Opus en Ogg)",
+    )
     x = models.PositiveIntegerField()
     y = models.PositiveIntegerField()
     width = models.PositiveIntegerField()
