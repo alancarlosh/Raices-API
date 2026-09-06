@@ -22,11 +22,16 @@ _ORIGIN_X, _ORIGIN_Y = 60, 60
 # vocabulario y audio real una vez que el asesor entregue las grabaciones
 # validadas por hablantes nativos — ver progress/services.py y el README para
 # el flujo de moderación.
+# sprite_key sigue la convención "<item>_<variante>" acordada con Raices-Front,
+# resuelta contra su texture atlas de Kenney Furniture Kit (CC0). "cortina" y
+# "reloj" no tienen sprite en el kit, así que el frontend los reemplazó por
+# "planta" y "ventana" — ver public/assets/sprites/furniture/CREDITS.md en
+# Raices-Front para el mapeo completo.
 ESCENAS_SEED = {
     "Cocina": [
-        ("silla", "chair_wood_a"),
-        ("mesa", "table_wood_a"),
-        ("puerta", "door_wood_a"),
+        ("silla", "chair_a"),
+        ("mesa", "table_a"),
+        ("puerta", "door_a"),
         ("ventana", "window_a"),
         ("estufa", "stove_a"),
         ("refrigerador", "fridge_a"),
@@ -36,12 +41,12 @@ ESCENAS_SEED = {
     "Sala": [
         ("sofa", "sofa_a"),
         ("mesa_centro", "table_coffee_a"),
-        ("lampara", "lamp_a"),
-        ("televisor", "tv_a"),
-        ("cortina", "curtain_a"),
+        ("lampara", "lamp_floor_a"),
+        ("televisor", "tv_modern_a"),
+        ("planta", "plant_a"),
         ("cojin", "cushion_a"),
         ("librero", "bookshelf_a"),
-        ("reloj", "clock_wall_a"),
+        ("ventana", "window_a"),
     ],
 }
 
@@ -66,7 +71,7 @@ class Command(BaseCommand):
 
         for orden, (nombre_escena, objetos) in enumerate(ESCENAS_SEED.items()):
             codigo_escena = nombre_escena.lower()
-            escena, _ = Escena.objects.get_or_create(
+            escena, _ = Escena.objects.update_or_create(
                 codigo=codigo_escena,
                 defaults={
                     "nombre": nombre_escena,
@@ -76,9 +81,15 @@ class Command(BaseCommand):
                 },
             )
 
+            palabras_vigentes = [palabra for palabra, _ in objetos]
+            escena.objetos.exclude(palabra__in=palabras_vigentes).delete()
+
             for i, (palabra, sprite_key) in enumerate(objetos):
                 fila, columna = divmod(i, _GRID_COLS)
-                ObjetoInteractivo.objects.get_or_create(
+                # update_or_create (no get_or_create): sprite_key y otros campos
+                # placeholder siguen ajustándose mientras se coordina con el
+                # frontend, así que rehacer el seed debe corregir filas existentes.
+                ObjetoInteractivo.objects.update_or_create(
                     escena=escena,
                     palabra=palabra,
                     defaults={
