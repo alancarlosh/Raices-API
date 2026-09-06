@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('palabra', models.CharField(help_text='Palabra en la lengua originaria (NFC)', max_length=150)),
-                ('sprite', models.URLField(help_text='URL del sprite del objeto (servido vía CDN)')),
+                ('sprite_key', models.CharField(help_text="Clave del frame en el texture atlas del frontend (ej. 'chair_wood_a'); el sprite en sí vive empacado en Raices-Front, no se sirve desde el backend", max_length=100)),
                 ('audio_ogg', models.URLField(help_text='URL del audio en OGG/Opus (formato principal, servido vía CDN)')),
                 ('audio_m4a', models.URLField(help_text='URL del audio en AAC/M4A (fallback para Safari/iOS, que no soporta Opus en Ogg)')),
                 ('x', models.PositiveIntegerField()),

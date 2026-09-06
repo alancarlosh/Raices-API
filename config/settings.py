@@ -118,5 +118,9 @@ CACHES = {
 }
 
 CORS_ALLOWED_ORIGINS = [
-    o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",") if o.strip()
+    o.strip()
+    for o in os.environ.get(
+        "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:8080"
+    ).split(",")
+    if o.strip()
 ]

@@ -33,7 +33,11 @@ class ObjetoInteractivo(models.Model):
     escena = models.ForeignKey(Escena, on_delete=models.CASCADE, related_name="objetos")
     lengua = models.ForeignKey(Lengua, on_delete=models.CASCADE, related_name="objetos")
     palabra = models.CharField(max_length=150, help_text="Palabra en la lengua originaria (NFC)")
-    sprite = models.URLField(help_text="URL del sprite del objeto (servido vía CDN)")
+    sprite_key = models.CharField(
+        max_length=100,
+        help_text="Clave del frame en el texture atlas del frontend (ej. 'chair_wood_a'); "
+        "el sprite en sí vive empacado en Raices-Front, no se sirve desde el backend",
+    )
     audio_ogg = models.URLField(
         help_text="URL del audio en OGG/Opus (formato principal, servido vía CDN)",
     )

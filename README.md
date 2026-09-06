@@ -18,6 +18,23 @@ python manage.py runserver
 
 Por defecto usa SQLite. Para PostgreSQL define `DATABASE_URL` en `.env`.
 
+CORS ya está habilitado (`django-cors-headers`) para `http://localhost:5173` y
+`http://localhost:8080` (orígenes típicos de un dev server de Vite); ajusta
+`CORS_ALLOWED_ORIGINS` en `.env` si el frontend corre en otro puerto.
+
+### Datos de prueba
+
+```bash
+python manage.py seed_demo
+```
+
+Crea la lengua placeholder "Totonaco" (`toto`), dos escenas ("Cocina" y "Sala")
+con 8 objetos publicados cada una, y un usuario de prueba (`demo` /
+`Demo12345!`) para que el frontend pueda obtener un JWT real vía
+`POST /api/token/`. Es idempotente. Las palabras sembradas son placeholders en
+**español**, no traducciones reales al totonaco — se reemplazan cuando llegue
+el contenido validado por el asesor/hablantes nativos.
+
 ## Estructura
 
 Patrón **Services + Selectors** (Django Styleguide de HackSoft): `models.py` solo
@@ -43,6 +60,9 @@ palabra en varias lenguas originarias. Ver `apps/progress/services.py`.
   Cada objeto expone `audio_ogg` y `audio_m4a`: Safari/iOS no soporta Ogg de forma
   confiable (solo Opus empacado en CAF), así que cada audio se sirve en dos
   formatos y el frontend debe usar múltiples `<source>` con fallback.
+  Cada objeto expone `sprite_key` en vez de una imagen: los sprites viven en un
+  texture atlas empacado en `Raices-Front` (assets CC0 tipo Kenney Furniture
+  Kit), el backend solo manda la clave para resolverlo del lado del cliente.
 - `POST /api/objetos/<id>/descubrir/` — marca un objeto como descubierto.
 - `POST /api/objetos/<id>/intento-escritura/` — body `{"texto_ingresado": "..."}`.
 - `GET /api/progreso/` — % de objetos descubiertos por escena.
