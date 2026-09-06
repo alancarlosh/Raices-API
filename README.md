@@ -28,12 +28,14 @@ CORS ya está habilitado (`django-cors-headers`) para `http://localhost:5173` y
 python manage.py seed_demo
 ```
 
-Crea la lengua placeholder "Totonaco" (`toto`), dos escenas ("Cocina" y "Sala")
-con 8 objetos publicados cada una, y un usuario de prueba (`demo` /
-`Demo12345!`) para que el frontend pueda obtener un JWT real vía
-`POST /api/token/`. Es idempotente. Las palabras sembradas son placeholders en
-**español**, no traducciones reales al totonaco — se reemplazan cuando llegue
-el contenido validado por el asesor/hablantes nativos.
+Crea la lengua "Totonaco" (`toto`) — confirmada como la primera lengua objetivo
+real del proyecto, no un placeholder — con dos escenas ("Cocina" y "Sala") de
+8 objetos publicados cada una, y un usuario de prueba (`demo` / `Demo12345!`)
+para que el frontend pueda obtener un JWT real vía `POST /api/token/`. Es
+idempotente. Lo que sí sigue siendo placeholder son las **palabras** sembradas
+(en español, ej. "silla", "mesa") — deben reemplazarse por vocabulario
+totonaco real validado por el asesor/hablantes nativos en cuanto esté
+disponible.
 
 ## Estructura
 

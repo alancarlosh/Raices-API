@@ -15,11 +15,13 @@ _CELL_W, _CELL_H = 200, 160
 _OBJ_W, _OBJ_H = 64, 64
 _ORIGIN_X, _ORIGIN_Y = 60, 60
 
-# ADVERTENCIA: "palabra" abajo son nombres en ESPAÑOL usados como placeholder de
-# desarrollo para poder probar la conexión end-to-end con el frontend. NO son
-# traducciones reales al totonaco. Deben reemplazarse por el vocabulario y audio
-# real una vez que el asesor entregue las grabaciones validadas por hablantes
-# nativos — ver progress/services.py y el README para el flujo de moderación.
+# ADVERTENCIA: el totonaco YA ES la lengua real confirmada del proyecto (no un
+# placeholder) — pero "palabra" abajo son nombres en ESPAÑOL usados solo como
+# placeholder de desarrollo para poder probar la conexión end-to-end con el
+# frontend. NO son traducciones reales al totonaco. Deben reemplazarse por el
+# vocabulario y audio real una vez que el asesor entregue las grabaciones
+# validadas por hablantes nativos — ver progress/services.py y el README para
+# el flujo de moderación.
 ESCENAS_SEED = {
     "Cocina": [
         ("silla", "chair_wood_a"),
@@ -52,12 +54,13 @@ class Command(BaseCommand):
     )
 
     def handle(self, *args, **options):
-        lengua, _ = Lengua.objects.get_or_create(
+        lengua, _ = Lengua.objects.update_or_create(
             codigo="toto",
             defaults={
                 "nombre": "Totonaco",
-                "descripcion": "Lengua placeholder para desarrollo hasta que el asesor "
-                "confirme la primera lengua con grabaciones reales.",
+                "descripcion": "Primera lengua objetivo confirmada del proyecto. Las palabras "
+                "de este seed son placeholders en español mientras se integra el "
+                "vocabulario y audio real validado por el asesor y hablantes nativos.",
             },
         )
 
