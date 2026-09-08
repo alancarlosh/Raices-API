@@ -78,7 +78,17 @@ palabra en varias lenguas originarias. Ver `apps/progress/services.py`.
 
 ## Endpoints
 
-- `POST /api/token/` / `POST /api/token/refresh/` — JWT.
+- `POST /api/registro/` — registro real de usuarios (no requiere auth). Body
+  `{"username": "...", "password": "...", "email": "..."}` (`email` opcional).
+  El rol nunca se acepta como input: todo usuario nuevo entra como `aprendiz`;
+  asignar `hablante_revisor`/`admin` es una acción manual desde el admin de
+  Django. La contraseña pasa por los validadores estándar de Django (longitud
+  mínima, no común, no solo numérica). Responde `201` con `{"user": {...},
+  "access": "...", "refresh": "..."}` — mismo shape de tokens que
+  `POST /api/token/`, así que el frontend puede dejar al usuario autenticado
+  de una vez sin una segunda llamada a login.
+- `POST /api/token/` / `POST /api/token/refresh/` — JWT (login normal para
+  usuarios ya registrados).
 - `GET /api/escenas/` — listado ligero (`id`, `codigo`, `nombre`, `lengua`, `orden`)
   para que el frontend arme su grafo de navegación entre cuartos sin hardcodear
   ids numéricos; referencia cada escena por su `codigo` (slug estable, ej.
