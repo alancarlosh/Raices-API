@@ -1,7 +1,9 @@
+from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from apps.accounts.models import Usuario
 from apps.content.models import Escena, ObjetoInteractivo
+from apps.content.seed_data import ESCENAS_SEED
 from apps.languages.models import Lengua
 
 DEMO_USERNAME = "demo"
@@ -15,47 +17,21 @@ _CELL_W, _CELL_H = 200, 160
 _OBJ_W, _OBJ_H = 64, 64
 _ORIGIN_X, _ORIGIN_Y = 60, 60
 
-# ADVERTENCIA: el totonaco YA ES la lengua real confirmada del proyecto (no un
-# placeholder) — pero "palabra" abajo son nombres en ESPAÑOL usados solo como
-# placeholder de desarrollo para poder probar la conexión end-to-end con el
-# frontend. NO son traducciones reales al totonaco. Deben reemplazarse por el
-# vocabulario y audio real una vez que el asesor entregue las grabaciones
-# validadas por hablantes nativos — ver progress/services.py y el README para
-# el flujo de moderación.
-# sprite_key sigue la convención "<item>_<variante>" acordada con Raices-Front,
-# resuelta contra su texture atlas de Kenney Furniture Kit (CC0). "cortina" y
-# "reloj" no tienen sprite en el kit, así que el frontend los reemplazó por
-# "planta" y "ventana" — ver public/assets/sprites/furniture/CREDITS.md en
-# Raices-Front para el mapeo completo.
-ESCENAS_SEED = {
-    "Cocina": [
-        ("silla", "chair_a"),
-        ("mesa", "table_a"),
-        ("puerta", "door_a"),
-        ("ventana", "window_a"),
-        ("estufa", "stove_a"),
-        ("refrigerador", "fridge_a"),
-        ("plato", "plate_a"),
-        ("vaso", "cup_a"),
-    ],
-    "Sala": [
-        ("sofa", "sofa_a"),
-        ("mesa_centro", "table_coffee_a"),
-        ("lampara", "lamp_floor_a"),
-        ("televisor", "tv_modern_a"),
-        ("planta", "plant_a"),
-        ("cojin", "cushion_a"),
-        ("librero", "bookshelf_a"),
-        ("ventana", "window_a"),
-    ],
-}
+
+def _url_audio_placeholder(palabra: str, extension: str) -> str:
+    """Apunta al audio TTS generado por `generate_placeholder_audio`, servido
+    localmente por Django (ver MEDIA_BASE_URL/MEDIA_URL en settings) — no un
+    dominio inventado que nunca resuelve."""
+    return f"{settings.MEDIA_BASE_URL}{settings.MEDIA_URL}audio/placeholder/{palabra}.{extension}"
 
 
 class Command(BaseCommand):
     help = (
         "Crea datos de demo (lengua, escenas, objetos, usuario de prueba) para que "
         "Raices-Front pueda conectarse a la API real en vez de usar fixtures locales. "
-        "Idempotente: correrlo varias veces no duplica datos."
+        "Idempotente: correrlo varias veces no duplica datos. Corre antes "
+        "'python manage.py generate_placeholder_audio' para que las URLs de "
+        "audio_ogg/audio_m4a que este comando genera resuelvan a archivos reales."
     )
 
     def handle(self, *args, **options):
@@ -95,8 +71,8 @@ class Command(BaseCommand):
                     defaults={
                         "lengua": lengua,
                         "sprite_key": sprite_key,
-                        "audio_ogg": f"https://cdn.example.com/placeholder/audio/{palabra}.ogg",
-                        "audio_m4a": f"https://cdn.example.com/placeholder/audio/{palabra}.m4a",
+                        "audio_ogg": _url_audio_placeholder(palabra, "ogg"),
+                        "audio_m4a": _url_audio_placeholder(palabra, "m4a"),
                         "x": _ORIGIN_X + columna * _CELL_W,
                         "y": _ORIGIN_Y + fila * _CELL_H,
                         "width": _OBJ_W,

@@ -25,17 +25,38 @@ CORS ya está habilitado (`django-cors-headers`) para `http://localhost:5173` y
 ### Datos de prueba
 
 ```bash
+python manage.py generate_placeholder_audio   # TTS local (macOS say + ffmpeg), una sola vez
 python manage.py seed_demo
 ```
 
 Crea la lengua "Totonaco" (`toto`) — confirmada como la primera lengua objetivo
 real del proyecto, no un placeholder — con dos escenas ("Cocina" y "Sala") de
 8 objetos publicados cada una, y un usuario de prueba (`demo` / `Demo12345!`)
-para que el frontend pueda obtener un JWT real vía `POST /api/token/`. Es
-idempotente. Lo que sí sigue siendo placeholder son las **palabras** sembradas
-(en español, ej. "silla", "mesa") — deben reemplazarse por vocabulario
-totonaco real validado por el asesor/hablantes nativos en cuanto esté
-disponible.
+para que el frontend pueda obtener un JWT real vía `POST /api/token/`. Ambos
+comandos son idempotentes. Lo que sí sigue siendo placeholder son las
+**palabras** sembradas (en español, ej. "silla", "mesa") — deben reemplazarse
+por vocabulario totonaco real validado por el asesor/hablantes nativos en
+cuanto esté disponible.
+
+`generate_placeholder_audio` genera clips TTS (voz "Paulina", NO grabaciones
+reales) en OGG+M4A con `say` + ffmpeg y los guarda en `media/audio/placeholder/`,
+servidos localmente por Django en `/media/...` — así el audio funciona de
+verdad en desarrollo sin depender de un CDN real. `MEDIA_BASE_URL` en `.env`
+debe coincidir con el host:puerto donde corre `runserver` (por defecto
+`http://127.0.0.1:8000`).
+
+### Pipeline de ingesta de audio real
+
+```bash
+python manage.py ingest_audio <objeto_id> <ruta/al/audio/fuente.wav>
+```
+
+Es el comando que se usará cuando lleguen las grabaciones reales del asesor:
+genera `audio_ogg`/`audio_m4a` con ffmpeg a partir del archivo fuente, los
+guarda en `media/audio/ingerido/`, y deja el objeto en estado `en_revision`
+(desaparece de `GET /api/escenas/<id>/`, que solo expone `publicado`) hasta
+que un hablante-revisor lo apruebe desde el admin de Django (acción "Marcar
+como publicado" en `ObjetoInteractivoAdmin`). Nunca publica automáticamente.
 
 ## Estructura
 

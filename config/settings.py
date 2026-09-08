@@ -94,6 +94,13 @@ USE_TZ = True
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Audio/sprites placeholder servidos localmente en desarrollo (django.views.static,
+# solo activo con DEBUG=True). En producción esto lo sirve un CDN (Backblaze B2 +
+# Cloudflare, ver README) — MEDIA_BASE_URL/MEDIA_ROOT nunca se usan fuera de dev.
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_BASE_URL = os.environ.get("MEDIA_BASE_URL", "http://127.0.0.1:8000")
+
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
