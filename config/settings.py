@@ -15,9 +15,17 @@ load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-dev-only-change-in-production")
 
-DEBUG = os.environ.get("DEBUG", "True") == "True"
+# Falla cerrado: sin DEBUG explícito en el entorno, se asume producción. Dev
+# local siempre define DEBUG=True en .env (ver .env.example).
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
+
+# Render inyecta este env var automáticamente con el hostname público del
+# servicio (ej. "raices-api.onrender.com") — se agrega solo si existe, no
+# reemplaza la necesidad de configurar ALLOWED_HOSTS explícitamente.
+if os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
+    ALLOWED_HOSTS.append(os.environ["RENDER_EXTERNAL_HOSTNAME"])
 
 
 INSTALLED_APPS = [
@@ -38,6 +46,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.gzip.GZipMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -92,11 +101,23 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Audio/sprites placeholder servidos localmente en desarrollo (django.views.static,
-# solo activo con DEBUG=True). En producción esto lo sirve un CDN (Backblaze B2 +
-# Cloudflare, ver README) — MEDIA_BASE_URL/MEDIA_ROOT nunca se usan fuera de dev.
+# whitenoise sirve los estáticos propios de Django (admin, DRF browsable API)
+# en producción sin depender de un servidor web aparte (Render free tier no
+# trae uno). Correr `collectstatic` en el build step llena STATIC_ROOT.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
+
+# Audio/sprites placeholder servidos localmente vía la vista de medios propia
+# en config/urls.py (no depende de DEBUG, ver comentario ahí). En producción
+# el audio real lo sirve un CDN (Backblaze B2 + Cloudflare, ver README) — pero
+# mientras eso no exista, Render también sirve estos placeholders desde aquí
+# (ver sección "Despliegue en Render" del README sobre por qué el filesystem
+# efímero de Render no es un problema para este caso).
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 MEDIA_BASE_URL = os.environ.get("MEDIA_BASE_URL", "http://127.0.0.1:8000")

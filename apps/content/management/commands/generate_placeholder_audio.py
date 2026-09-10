@@ -16,8 +16,12 @@ class Command(BaseCommand):
     help = (
         "Genera clips de audio placeholder (TTS vía 'say', NO grabaciones reales) "
         "para las palabras del seed de desarrollo, con 'say' + ffmpeg. Solo para "
-        "desarrollo local en macOS; en producción el audio real lo sirve un CDN. "
-        "Correr antes de 'seed_demo' para que sus URLs de audio resuelvan."
+        "desarrollo local en macOS (say no existe en Linux); en producción el "
+        "audio real lo sirve un CDN. Correr antes de 'seed_demo' para que sus "
+        "URLs de audio resuelvan. Si cambias las palabras del seed, vuelve a "
+        "correr esto y committea el resultado en "
+        "apps/content/fixtures/audio_placeholder/ — eso es lo que usa "
+        "'load_placeholder_audio_fixtures' (portable, sin macOS) en CI/Render."
     )
 
     def add_arguments(self, parser):

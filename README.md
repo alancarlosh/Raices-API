@@ -43,7 +43,12 @@ reales) en OGG+M4A con `say` + ffmpeg y los guarda en `media/audio/placeholder/`
 servidos localmente por Django en `/media/...` — así el audio funciona de
 verdad en desarrollo sin depender de un CDN real. `MEDIA_BASE_URL` en `.env`
 debe coincidir con el host:puerto donde corre `runserver` (por defecto
-`http://127.0.0.1:8000`).
+`http://127.0.0.1:8000`). Solo funciona en macOS (`say` no existe en Linux) —
+su salida vive committeada en `apps/content/fixtures/audio_placeholder/`, y
+`load_placeholder_audio_fixtures` (portable, sin `say` ni ffmpeg) es lo que
+copia esos archivos a `MEDIA_ROOT` en CI/Render. Si cambias las palabras del
+seed, corre `generate_placeholder_audio` de nuevo en tu Mac y committea el
+resultado actualizado en ese directorio de fixtures.
 
 ### Pipeline de ingesta de audio real
 
@@ -57,6 +62,64 @@ guarda en `media/audio/ingerido/`, y deja el objeto en estado `en_revision`
 (desaparece de `GET /api/escenas/<id>/`, que solo expone `publicado`) hasta
 que un hablante-revisor lo apruebe desde el admin de Django (acción "Marcar
 como publicado" en `ObjetoInteractivoAdmin`). Nunca publica automáticamente.
+
+## Despliegue en Render
+
+Render free tier (2026): web service + PostgreSQL sin tarjeta, se duerme tras
+15 min de inactividad — aceptable para una demo de tesis, no para producción
+real con usuarios activos todo el tiempo.
+
+**Decisión deliberada sobre el filesystem efímero de Render**: cada deploy
+(y cada vez que el servicio se duerme/despierta) puede perder cualquier
+archivo escrito en disco que no esté en git. En vez de resolver esto con
+almacenamiento persistente o S3 (fuera de alcance por ahora), el build
+command reconstruye todo lo necesario desde código + fixtures committeados
+en cada deploy: migra la base, copia el audio placeholder committeado a
+`MEDIA_ROOT`, y corre el seed — los tres son idempotentes, así que repetirlos
+en cada deploy no duplica ni corrompe nada. Cuando el audio real llegue y se
+sirva desde un CDN (el plan original, ver más abajo), este problema
+desaparece solo porque `MEDIA_ROOT` deja de importar en producción.
+
+### Pasos para Alan
+
+0. Si el repo no está en GitHub todavía: crear un repo y hacer push de esta
+   rama (`git remote add origin <url> && git push -u origin main`). Render
+   necesita conectarse a un repo de GitHub, no puede desplegar un working
+   directory local.
+1. Crear cuenta en [render.com](https://render.com) (login con GitHub, sin
+   tarjeta).
+2. **New +** → **Blueprint** → conectar el repo `Raices-API`. Render detecta
+   `render.yaml` en la raíz y propone crear el web service (`raices-api`) y
+   la base de datos (`raices-db`) juntos — aceptar.
+3. Variables de entorno a llenar en el dashboard del web service (las que
+   `render.yaml` marca como manuales, el resto —`SECRET_KEY`,
+   `DATABASE_URL`— Render las genera/conecta solo):
+   - `ALLOWED_HOSTS`: dejar vacío en el primer deploy (o poner un valor
+     cualquiera temporal); Render ya inyecta automáticamente
+     `RENDER_EXTERNAL_HOSTNAME` como host permitido además de lo que pongas
+     aquí, pero conviene fijarlo explícito una vez que se conozca la URL real
+     (paso 5) — ver nota de verificación abajo.
+   - `CORS_ALLOWED_ORIGINS`: la URL del frontend en Cloudflare Pages una vez
+     que exista (ej. `https://raices-front.pages.dev`). Vacío rompe CORS para
+     el frontend real, pero no bloquea probar la API sola con curl/Postman.
+   - `MEDIA_BASE_URL`: la URL pública que Render asigna al servicio (paso 5),
+     ej. `https://raices-api.onrender.com` — sin esto, `audio_ogg`/`audio_m4a`
+     en las respuestas apuntarían a `127.0.0.1`, que no significa nada fuera
+     de esta máquina.
+4. Deploy. La primera vez tarda más (instala dependencias, corre
+   `collectstatic`, migra, siembra datos).
+5. Una vez arriba, Render muestra la URL pública real del servicio
+   (`https://<algo>.onrender.com`). Volver al paso 3 y completar
+   `ALLOWED_HOSTS`/`MEDIA_BASE_URL`/`CORS_ALLOWED_ORIGINS` con esa URL real, y
+   disparar un redeploy manual ("Manual Deploy" → "Deploy latest commit").
+6. Avisarle a Claude la URL real para ajustar CORS del lado del código si
+   hace falta y coordinar con el frontend.
+
+**Nota de verificación**: que Render inyecte `RENDER_EXTERNAL_HOSTNAME`
+automáticamente es una conveniencia de su plataforma que el código ya
+aprovecha (ver `config/settings.py`) pero que no verifiqué con una fuente
+externa actualizada a 2026 — trátalo como una red de seguridad adicional, no
+como sustituto de fijar `ALLOWED_HOSTS` explícito en el paso 5.
 
 ## Estructura
 
