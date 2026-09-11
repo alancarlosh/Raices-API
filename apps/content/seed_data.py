@@ -11,33 +11,67 @@ ingesta) y el README para el flujo de moderación.
 sprite_key sigue la convención "<item>_<variante>" acordada con Raices-Front,
 resuelta contra su texture atlas de Kenney Furniture Kit (CC0). "cortina" y
 "reloj" no tienen sprite en el kit, así que el frontend los reemplazó por
-"planta" y "ventana" — ver public/assets/sprites/furniture/CREDITS.md en
-Raices-Front para el mapeo completo.
+"planta" y "ventana" en Sala — ver public/assets/sprites/furniture/CREDITS.md
+en Raices-Front para el mapeo completo. Por esa misma razón, "Recámara" evita
+"cortina" desde el inicio en vez de repetir el mismo problema.
+
+Los sprite_key de "Recámara" son TENTATIVOS — pendientes de confirmar con
+Raices-Front contra lo que el Kenney Furniture Kit realmente tiene disponible
+para cama/ropero/espejo/buró (a diferencia de Cocina/Sala, cuyos sprite_key
+ya están confirmados y en uso). "ventana" reutiliza el mismo sprite_key
+"window_a" que Cocina/Sala a propósito: mismo objeto, mismo atlas frame,
+independientemente del cuarto. "lampara" reutiliza la misma palabra que en
+Sala (incluso genera el mismo audio placeholder) pero con un sprite_key
+distinto ("lamp_table_a" vs. "lamp_floor_a" en Sala) porque son objetos
+visualmente distintos aunque compartan nombre en español.
+
+Cada escena declara su `codigo` (slug) explícitamente en vez de derivarlo de
+`nombre` — "Recámara" es justo el caso que rompe un `nombre.lower()` ingenuo,
+porque "á" no es un carácter válido de SlugField.
 """
 
 ESCENAS_SEED = {
-    "Cocina": [
-        ("silla", "chair_a"),
-        ("mesa", "table_a"),
-        ("puerta", "door_a"),
-        ("ventana", "window_a"),
-        ("estufa", "stove_a"),
-        ("refrigerador", "fridge_a"),
-        ("plato", "plate_a"),
-        ("vaso", "cup_a"),
-    ],
-    "Sala": [
-        ("sofa", "sofa_a"),
-        ("mesa_centro", "table_coffee_a"),
-        ("lampara", "lamp_floor_a"),
-        ("televisor", "tv_modern_a"),
-        ("planta", "plant_a"),
-        ("cojin", "cushion_a"),
-        ("librero", "bookshelf_a"),
-        ("ventana", "window_a"),
-    ],
+    "cocina": {
+        "nombre": "Cocina",
+        "objetos": [
+            ("silla", "chair_a"),
+            ("mesa", "table_a"),
+            ("puerta", "door_a"),
+            ("ventana", "window_a"),
+            ("estufa", "stove_a"),
+            ("refrigerador", "fridge_a"),
+            ("plato", "plate_a"),
+            ("vaso", "cup_a"),
+        ],
+    },
+    "sala": {
+        "nombre": "Sala",
+        "objetos": [
+            ("sofa", "sofa_a"),
+            ("mesa_centro", "table_coffee_a"),
+            ("lampara", "lamp_floor_a"),
+            ("televisor", "tv_modern_a"),
+            ("planta", "plant_a"),
+            ("cojin", "cushion_a"),
+            ("librero", "bookshelf_a"),
+            ("ventana", "window_a"),
+        ],
+    },
+    "recamara": {
+        "nombre": "Recámara",
+        "objetos": [
+            ("cama", "bed_a"),
+            ("almohada", "pillow_a"),
+            ("ropero", "wardrobe_a"),
+            ("espejo", "mirror_a"),
+            ("lampara", "lamp_table_a"),
+            ("buro", "nightstand_a"),
+            ("cajonera", "dresser_a"),
+            ("ventana", "window_a"),
+        ],
+    },
 }
 
 
 def palabras_unicas() -> list[str]:
-    return sorted({palabra for objetos in ESCENAS_SEED.values() for palabra, _ in objetos})
+    return sorted({palabra for datos in ESCENAS_SEED.values() for palabra, _ in datos["objetos"]})

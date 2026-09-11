@@ -45,8 +45,9 @@ class Command(BaseCommand):
             },
         )
 
-        for orden, (nombre_escena, objetos) in enumerate(ESCENAS_SEED.items()):
-            codigo_escena = nombre_escena.lower()
+        for orden, (codigo_escena, datos) in enumerate(ESCENAS_SEED.items()):
+            nombre_escena = datos["nombre"]
+            objetos = datos["objetos"]
             escena, _ = Escena.objects.update_or_create(
                 codigo=codigo_escena,
                 defaults={
