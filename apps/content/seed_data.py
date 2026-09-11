@@ -15,15 +15,21 @@ resuelta contra su texture atlas de Kenney Furniture Kit (CC0). "cortina" y
 en Raices-Front para el mapeo completo. Por esa misma razón, "Recámara" evita
 "cortina" desde el inicio en vez de repetir el mismo problema.
 
-Los sprite_key de "Recámara" son TENTATIVOS — pendientes de confirmar con
-Raices-Front contra lo que el Kenney Furniture Kit realmente tiene disponible
-para cama/ropero/espejo/buró (a diferencia de Cocina/Sala, cuyos sprite_key
-ya están confirmados y en uso). "ventana" reutiliza el mismo sprite_key
-"window_a" que Cocina/Sala a propósito: mismo objeto, mismo atlas frame,
-independientemente del cuarto. "lampara" reutiliza la misma palabra que en
-Sala (incluso genera el mismo audio placeholder) pero con un sprite_key
-distinto ("lamp_table_a" vs. "lamp_floor_a" en Sala) porque son objetos
-visualmente distintos aunque compartan nombre en español.
+Los sprite_key de "Recámara" fueron confirmados por Raices-Front contra el
+Kenney Furniture Kit real (commit d5abead ahí): bed_a, pillow_a, mirror_a,
+lamp_table_a, nightstand_a, dresser_a y window_a están en uso tal cual.
+Excepción: "wardrobe_a" (ropero) NO tiene sprite real en el kit — el
+Furniture Kit no trae ningún armario/clóset alto, solo gabinetes bajos de
+cocina/baño/TV/buró. El frontend renderiza esto como placeholder gris sin
+romper nada; el orquestador está buscando una fuente CC0 adicional. El
+string "wardrobe_a" se queda como está hasta que exista un sprite real que
+reemplazarlo tenga sentido — cambiarlo ahora sin un sprite confirmado solo
+movería el problema. "ventana" reutiliza el mismo sprite_key "window_a" que
+Cocina/Sala a propósito: mismo objeto, mismo atlas frame, independientemente
+del cuarto. "lampara" reutiliza la misma palabra que en Sala (incluso genera
+el mismo audio placeholder) pero con un sprite_key distinto ("lamp_table_a"
+vs. "lamp_floor_a" en Sala) porque son objetos visualmente distintos aunque
+compartan nombre en español.
 
 Cada escena declara su `codigo` (slug) explícitamente en vez de derivarlo de
 `nombre` — "Recámara" es justo el caso que rompe un `nombre.lower()` ingenuo,
