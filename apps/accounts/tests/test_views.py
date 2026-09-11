@@ -1,4 +1,5 @@
 import pytest
+from django.core.cache import cache
 from rest_framework.test import APIClient
 
 from apps.accounts.models import Usuario
@@ -74,3 +75,44 @@ def test_usuario_registrado_puede_hacer_login_normal_despues():
 
     assert respuesta.status_code == 200
     assert "access" in respuesta.data
+
+
+def test_registro_limita_intentos_por_minuto():
+    cache.clear()
+    client = APIClient()
+
+    for i in range(10):
+        respuesta = client.post(
+            "/api/registro/",
+            {"username": f"limite_registro_{i}", "password": "ContraseñaSegura123"},
+            format="json",
+        )
+        assert respuesta.status_code == 201
+
+    respuesta = client.post(
+        "/api/registro/",
+        {"username": "limite_registro_extra", "password": "ContraseñaSegura123"},
+        format="json",
+    )
+    assert respuesta.status_code == 429
+
+
+def test_token_obtain_limita_intentos_por_minuto():
+    cache.clear()
+    UsuarioFactory(username="limite_login")
+    client = APIClient()
+
+    for _ in range(10):
+        respuesta = client.post(
+            "/api/token/",
+            {"username": "limite_login", "password": "contraseña-incorrecta"},
+            format="json",
+        )
+        assert respuesta.status_code == 401
+
+    respuesta = client.post(
+        "/api/token/",
+        {"username": "limite_login", "password": "contraseña-incorrecta"},
+        format="json",
+    )
+    assert respuesta.status_code == 429

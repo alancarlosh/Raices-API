@@ -106,8 +106,15 @@ desaparece solo porque `MEDIA_ROOT` deja de importar en producción.
      ej. `https://raices-api.onrender.com` — sin esto, `audio_ogg`/`audio_m4a`
      en las respuestas apuntarían a `127.0.0.1`, que no significa nada fuera
      de esta máquina.
+   - `DJANGO_SUPERUSER_USERNAME` / `DJANGO_SUPERUSER_PASSWORD` /
+     `DJANGO_SUPERUSER_EMAIL`: credenciales del admin de Django en producción
+     (para entrar a `/admin/` y aprobar/rechazar contenido moderado). El build
+     los usa para crear ese usuario automáticamente en cada deploy — ver
+     `apps/accounts/management/commands/ensure_superuser.py`. Usar una
+     contraseña real, no la de desarrollo; si se omiten estas tres variables
+     el build sigue sin romperse, solo no habrá superusuario.
 4. Deploy. La primera vez tarda más (instala dependencias, corre
-   `collectstatic`, migra, siembra datos).
+   `collectstatic`, migra, siembra datos, crea el superusuario).
 5. Una vez arriba, Render muestra la URL pública real del servicio
    (`https://<algo>.onrender.com`). Volver al paso 3 y completar
    `ALLOWED_HOSTS`/`MEDIA_BASE_URL`/`CORS_ALLOWED_ORIGINS` con esa URL real, y
@@ -149,9 +156,15 @@ palabra en varias lenguas originarias. Ver `apps/progress/services.py`.
   mínima, no común, no solo numérica). Responde `201` con `{"user": {...},
   "access": "...", "refresh": "..."}` — mismo shape de tokens que
   `POST /api/token/`, así que el frontend puede dejar al usuario autenticado
-  de una vez sin una segunda llamada a login.
+  de una vez sin una segunda llamada a login. Limitado a 10 intentos/min por
+  IP (`ScopedRateThrottle`, scope `"registro"`) — responde `429` si se excede.
 - `POST /api/token/` / `POST /api/token/refresh/` — JWT (login normal para
-  usuarios ya registrados).
+  usuarios ya registrados). `POST /api/token/` limitado a 10 intentos/min por
+  IP (scope `"token_obtain"`) contra fuerza bruta de contraseñas; `refresh`
+  no tiene límite propio. Nota: el límite es por worker de gunicorn
+  (`LocMemCache` no es compartido entre procesos) — suficiente con el worker
+  único por defecto de Render free tier, no escala tal cual a varios workers
+  sin pasar a un caché compartido (Redis).
 - `GET /api/escenas/` — listado ligero (`id`, `codigo`, `nombre`, `lengua`, `orden`)
   para que el frontend arme su grafo de navegación entre cuartos sin hardcodear
   ids numéricos; referencia cada escena por su `codigo` (slug estable, ej.

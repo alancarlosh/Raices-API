@@ -130,6 +130,17 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    # Límite básico contra fuerza bruta/registro en bucle en /api/token/ y
+    # /api/registro/ ahora que la API vive en una URL pública (ver
+    # apps/accounts/views.py). Nota de alcance: el caché por defecto es
+    # LocMemCache (proceso único), así que el límite es por worker de
+    # gunicorn, no global — suficiente para un solo worker (el caso actual en
+    # Render free tier), no para escalar a varios sin un caché compartido
+    # (Redis) más adelante.
+    "DEFAULT_THROTTLE_RATES": {
+        "registro": "10/min",
+        "token_obtain": "10/min",
+    },
 }
 
 SIMPLE_JWT = {
