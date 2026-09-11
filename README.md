@@ -176,9 +176,18 @@ palabra en varias lenguas originarias. Ver `apps/progress/services.py`.
   Cada objeto expone `sprite_key` en vez de una imagen: los sprites viven en un
   texture atlas empacado en `Raices-Front` (assets CC0 tipo Kenney Furniture
   Kit), el backend solo manda la clave para resolverlo del lado del cliente.
+- `GET /api/me/` — username/email/rol del usuario autenticado (a partir del
+  JWT), para que el frontend no dependa de datos capturados en el momento del
+  login/registro (pueden desincronizarse entre dispositivos/sesiones).
 - `POST /api/objetos/<id>/descubrir/` — marca un objeto como descubierto.
 - `POST /api/objetos/<id>/intento-escritura/` — body `{"texto_ingresado": "..."}`.
-- `GET /api/progreso/` — % de objetos descubiertos por escena.
+- `GET /api/progreso/` — `{"escenas": [...], "total": {...}}`, cada uno con
+  `objetos_descubiertos`/`porcentaje` (clics) y `objetos_dominados`/
+  `porcentaje_dominado`. Un objeto cuenta como "dominado" si el intento de
+  escritura MÁS RECIENTE del usuario para ese objeto fue correcto — no es un
+  logro permanente por acertar una vez, se deriva del historial de
+  `IntentoEscritura` (ver `apps/progress/selectors.py`). Descubrir es un clic
+  trivial; dominar refleja la habilidad real que enseña la plataforma.
 
 ## Tests
 

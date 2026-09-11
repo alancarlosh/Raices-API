@@ -16,10 +16,25 @@ class IntentoEscrituraResultSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class ProgresoResumenSerializer(serializers.Serializer):
+class ProgresoEscenaSerializer(serializers.Serializer):
     escena_id = serializers.IntegerField()
     escena_nombre = serializers.CharField()
     lengua = serializers.CharField()
     total_objetos = serializers.IntegerField()
     objetos_descubiertos = serializers.IntegerField()
     porcentaje = serializers.FloatField()
+    objetos_dominados = serializers.IntegerField()
+    porcentaje_dominado = serializers.FloatField()
+
+
+class ProgresoTotalSerializer(serializers.Serializer):
+    total_objetos = serializers.IntegerField()
+    objetos_descubiertos = serializers.IntegerField()
+    porcentaje = serializers.FloatField()
+    objetos_dominados = serializers.IntegerField()
+    porcentaje_dominado = serializers.FloatField()
+
+
+class ProgresoResponseSerializer(serializers.Serializer):
+    escenas = ProgresoEscenaSerializer(many=True)
+    total = ProgresoTotalSerializer()

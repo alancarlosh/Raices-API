@@ -1,4 +1,4 @@
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
@@ -7,6 +7,20 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from . import services
 from .serializers import RegistroSerializer, UsuarioSerializer
+
+
+class MeView(APIView):
+    """GET /api/me/ — datos del usuario autenticado (username/email/rol).
+
+    Evita que el frontend dependa de lo que capturó en el momento del
+    login/registro, que puede desincronizarse entre dispositivos/sesiones o
+    si esos datos cambian del lado del servidor.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(UsuarioSerializer(request.user).data)
 
 
 class TokenObtainPairThrottledView(TokenObtainPairView):

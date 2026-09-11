@@ -6,7 +6,7 @@ from . import selectors, services
 from .serializers import (
     IntentoEscrituraInputSerializer,
     IntentoEscrituraResultSerializer,
-    ProgresoResumenSerializer,
+    ProgresoResponseSerializer,
 )
 
 
@@ -38,10 +38,11 @@ class ObjetoIntentoEscrituraView(APIView):
 
 
 class ProgresoResumenView(APIView):
-    """GET /api/progreso/"""
+    """GET /api/progreso/ — % descubierto y % dominado, por escena y en total."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        resumen = selectors.progreso_resumen(usuario=request.user)
-        return Response(ProgresoResumenSerializer(resumen, many=True).data)
+        por_escena = selectors.progreso_resumen(usuario=request.user)
+        total = selectors.progreso_total(resumen_por_escena=por_escena)
+        return Response(ProgresoResponseSerializer({"escenas": por_escena, "total": total}).data)

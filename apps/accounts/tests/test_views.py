@@ -116,3 +116,22 @@ def test_token_obtain_limita_intentos_por_minuto():
         format="json",
     )
     assert respuesta.status_code == 429
+
+
+def test_me_devuelve_datos_del_usuario_autenticado():
+    usuario = UsuarioFactory(username="quien_soy", email="quien@example.com")
+    client = APIClient()
+    client.force_authenticate(user=usuario)
+
+    respuesta = client.get("/api/me/")
+
+    assert respuesta.status_code == 200
+    assert respuesta.data["username"] == "quien_soy"
+    assert respuesta.data["email"] == "quien@example.com"
+    assert respuesta.data["rol"] == Usuario.Rol.APRENDIZ
+
+
+def test_me_requiere_autenticacion():
+    respuesta = APIClient().get("/api/me/")
+
+    assert respuesta.status_code == 401
