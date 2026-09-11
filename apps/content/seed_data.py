@@ -41,6 +41,16 @@ sanitarios) — se reemplazó por "gabinete" (`cabinet_a`,
 Side/bathroomCabinet.png) en vez de esperar un asset CC0 externo, a
 diferencia del caso de "ropero" que sigue pendiente. Los otros 5
 (lavabo/inodoro/regadera/tina/espejo) sí tienen sprite real desde el inicio.
+
+"Estudio" (2026-09, confirmado por Raices-Front antes de sembrar): "impresora"
+no tiene sprite en el kit (no trae electrónica de oficina como impresoras o
+archiveros) — se reemplazó por una segunda "planta" con sprite_key distinto
+("plant_small_a", una planta de escritorio pequeña) en vez de la "planta" de
+piso de Sala ("plant_a"). Igual patrón para "silla": reutiliza la palabra de
+Cocina pero con sprite_key distinto ("office_chair_a", silla de oficina con
+ruedas, vs. "chair_a" la silla de comedor). "librero" y "lampara" sí
+reutilizan exactamente el mismo sprite_key ya usado en Sala/Recámara
+(bookshelf_a, lamp_table_a) porque son el mismo objeto visual.
 """
 
 ESCENAS_SEED = {
@@ -92,6 +102,17 @@ ESCENAS_SEED = {
             ("tina", "bathtub_a"),
             ("espejo", "mirror_a"),
             ("gabinete", "cabinet_a"),
+        ],
+    },
+    "estudio": {
+        "nombre": "Estudio",
+        "objetos": [
+            ("escritorio", "desk_a"),
+            ("computadora", "computer_a"),
+            ("silla", "office_chair_a"),
+            ("librero", "bookshelf_a"),
+            ("lampara", "lamp_table_a"),
+            ("planta", "plant_small_a"),
         ],
     },
 }
