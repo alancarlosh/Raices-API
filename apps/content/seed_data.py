@@ -34,6 +34,13 @@ compartan nombre en español.
 Cada escena declara su `codigo` (slug) explícitamente en vez de derivarlo de
 `nombre` — "Recámara" es justo el caso que rompe un `nombre.lower()` ingenuo,
 porque "á" no es un carácter válido de SlugField.
+
+"Baño" (2026-09, confirmado por Raices-Front, commit 7e83872 ahí): igual que
+"ropero", "toalla" no tenía sprite disponible en el kit (no es un pack de
+sanitarios) — se reemplazó por "gabinete" (`cabinet_a`,
+Side/bathroomCabinet.png) en vez de esperar un asset CC0 externo, a
+diferencia del caso de "ropero" que sigue pendiente. Los otros 5
+(lavabo/inodoro/regadera/tina/espejo) sí tienen sprite real desde el inicio.
 """
 
 ESCENAS_SEED = {
@@ -74,6 +81,17 @@ ESCENAS_SEED = {
             ("buro", "nightstand_a"),
             ("cajonera", "dresser_a"),
             ("ventana", "window_a"),
+        ],
+    },
+    "bano": {
+        "nombre": "Baño",
+        "objetos": [
+            ("lavabo", "sink_a"),
+            ("inodoro", "toilet_a"),
+            ("regadera", "shower_a"),
+            ("tina", "bathtub_a"),
+            ("espejo", "mirror_a"),
+            ("gabinete", "cabinet_a"),
         ],
     },
 }
