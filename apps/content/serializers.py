@@ -6,7 +6,7 @@ from .models import Escena, ObjetoInteractivo
 class ObjetoInteractivoSerializer(serializers.ModelSerializer):
     class Meta:
         model = ObjetoInteractivo
-        fields = ["id", "palabra", "sprite_key", "audio_ogg", "audio_m4a", "x", "y", "width", "height"]
+        fields = ["id", "palabra", "glosa_es", "sprite_key", "audio_ogg", "audio_m4a", "x", "y", "width", "height"]
         read_only_fields = fields
 
 

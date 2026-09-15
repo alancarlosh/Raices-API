@@ -21,6 +21,7 @@ class ObjetoInteractivoFactory(factory.django.DjangoModelFactory):
     escena = factory.SubFactory(EscenaFactory)
     lengua = factory.SelfAttribute("escena.lengua")
     palabra = factory.Sequence(lambda n: f"palabra{n}")
+    glosa_es = factory.SelfAttribute("palabra")
     sprite_key = "chair_wood_a"
     audio_ogg = "https://cdn.example.com/audio.ogg"
     audio_m4a = "https://cdn.example.com/audio.m4a"

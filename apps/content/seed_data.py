@@ -8,6 +8,14 @@ vocabulario y audio real una vez que el asesor entregue las grabaciones
 validadas por hablantes nativos — ver apps/content/services.py (pipeline de
 ingesta) y el README para el flujo de moderación.
 
+`ObjetoInteractivo` separa `palabra` (la palabra real en la lengua, contra la
+que se valida la escritura del usuario) de `glosa_es` (la etiqueta en español
+para la UI). Aquí abajo solo hay UN string por objeto porque, mientras no
+llegue el vocabulario totonaco real, `seed_demo.py` sigue guardando el mismo
+placeholder en ambos campos. El día que llegue contenido real, `palabra` se
+actualiza a la palabra totonaca y `glosa_es` se queda con esta glosa en
+español — no hay que tocar esta lista hasta entonces.
+
 sprite_key sigue la convención "<item>_<variante>" acordada con Raices-Front,
 resuelta contra su texture atlas de Kenney Furniture Kit (CC0). "cortina" y
 "reloj" no tienen sprite en el kit, así que el frontend los reemplazó por

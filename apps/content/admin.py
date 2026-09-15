@@ -6,7 +6,7 @@ from .models import Escena, ObjetoInteractivo
 class ObjetoInteractivoInline(admin.TabularInline):
     model = ObjetoInteractivo
     extra = 0
-    fields = ("palabra", "lengua", "estado", "x", "y", "width", "height")
+    fields = ("palabra", "glosa_es", "lengua", "estado", "x", "y", "width", "height")
 
 
 @admin.register(Escena)
@@ -19,9 +19,9 @@ class EscenaAdmin(admin.ModelAdmin):
 
 @admin.register(ObjetoInteractivo)
 class ObjetoInteractivoAdmin(admin.ModelAdmin):
-    list_display = ("palabra", "escena", "lengua", "estado")
+    list_display = ("palabra", "glosa_es", "escena", "lengua", "estado")
     list_filter = ("estado", "lengua", "escena")
-    search_fields = ("palabra",)
+    search_fields = ("palabra", "glosa_es")
     actions = ["marcar_publicado", "marcar_en_revision"]
 
     @admin.action(description="Marcar como publicado")

@@ -22,6 +22,23 @@ def test_intento_escritura_correcto_cuando_coincide_exacto():
     assert IntentoEscritura.objects.count() == 1
 
 
+def test_intento_escritura_valida_contra_palabra_no_glosa_es():
+    # glosa_es es solo la etiqueta en español para la UI; la escritura del
+    # usuario nunca debe compararse contra ella, sino contra `palabra`.
+    objeto = ObjetoInteractivoFactory(palabra="chiwix", glosa_es="silla")
+    usuario = UsuarioFactory()
+
+    intento_glosa = services.intento_escritura_registrar(
+        usuario=usuario, objeto_id=objeto.id, texto_ingresado="silla"
+    )
+    intento_palabra = services.intento_escritura_registrar(
+        usuario=usuario, objeto_id=objeto.id, texto_ingresado="chiwix"
+    )
+
+    assert intento_glosa.correcto is False
+    assert intento_palabra.correcto is True
+
+
 def test_intento_escritura_es_sensible_al_saltillo():
     # U+A78C = LATIN SMALL LETTER SALTILLO. No es decorativo: distingue palabras.
     objeto = ObjetoInteractivoFactory(palabra="aꞌa")

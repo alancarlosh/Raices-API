@@ -1,4 +1,5 @@
 import pytest
+from django.core.cache import cache
 from rest_framework.test import APIClient
 
 from apps.accounts.tests.factories import UsuarioFactory
@@ -25,6 +26,28 @@ def test_escena_detail_devuelve_solo_objetos_publicados():
     assert respuesta.status_code == 200
     palabras = [o["palabra"] for o in respuesta.data["objetos"]]
     assert palabras == ["publicado"]
+
+
+def test_escena_detail_expone_palabra_y_glosa_es_por_separado():
+    # EscenaDetailView usa cache_page keyed solo por URL: como sqlite reutiliza
+    # rowids entre tests (cada uno corre en su propia transacción con rollback),
+    # dos escenas de tests distintos pueden compartir id y servir una respuesta
+    # cacheada de otro test. Se limpia para que este test no dependa del orden.
+    cache.clear()
+    escena = EscenaFactory()
+    ObjetoInteractivoFactory(
+        escena=escena,
+        palabra="tasknu",
+        glosa_es="silla",
+        estado=ObjetoInteractivo.Estado.PUBLICADO,
+    )
+    usuario = UsuarioFactory()
+
+    respuesta = _client_autenticado(usuario).get(f"/api/escenas/{escena.id}/")
+
+    objeto = respuesta.data["objetos"][0]
+    assert objeto["palabra"] == "tasknu"
+    assert objeto["glosa_es"] == "silla"
 
 
 def test_escena_detail_no_incurre_en_n_mas_1(django_assert_max_num_queries):

@@ -36,7 +36,11 @@ para que el frontend pueda obtener un JWT real vía `POST /api/token/`. Ambos
 comandos son idempotentes. Lo que sí sigue siendo placeholder son las
 **palabras** sembradas (en español, ej. "silla", "mesa") — deben reemplazarse
 por vocabulario totonaco real validado por el asesor/hablantes nativos en
-cuanto esté disponible.
+cuanto esté disponible. `ObjetoInteractivo` ya distingue `palabra` (la palabra
+real en la lengua, contra la que se valida la escritura — ver
+`apps/progress/services.py`) de `glosa_es` (la etiqueta en español para la
+UI); el seed llena ambos campos con el mismo placeholder mientras no exista
+vocabulario totonaco real que reemplace solo `palabra`.
 
 `generate_placeholder_audio` genera clips TTS (voz "Paulina", NO grabaciones
 reales) en OGG+M4A con `say` + ffmpeg y los guarda en `media/audio/placeholder/`,

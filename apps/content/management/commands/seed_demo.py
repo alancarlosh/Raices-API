@@ -71,6 +71,10 @@ class Command(BaseCommand):
                     palabra=palabra,
                     defaults={
                         "lengua": lengua,
+                        # Por ahora glosa_es == palabra: ambos son el mismo placeholder en
+                        # español. Cuando llegue el vocabulario totonaco real, `palabra` se
+                        # reemplaza por la palabra real y `glosa_es` conserva esta glosa.
+                        "glosa_es": palabra,
                         "sprite_key": sprite_key,
                         "audio_ogg": _url_audio_placeholder(palabra, "ogg"),
                         "audio_m4a": _url_audio_placeholder(palabra, "m4a"),

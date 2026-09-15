@@ -35,7 +35,20 @@ class ObjetoInteractivo(models.Model):
 
     escena = models.ForeignKey(Escena, on_delete=models.CASCADE, related_name="objetos")
     lengua = models.ForeignKey(Lengua, on_delete=models.CASCADE, related_name="objetos")
-    palabra = models.CharField(max_length=150, help_text="Palabra en la lengua originaria (NFC)")
+    palabra = models.CharField(
+        max_length=150,
+        help_text="Palabra REAL en la lengua originaria (NFC), validada por el asesor/hablantes "
+        "nativos. Es lo que se compara contra la escritura del usuario en "
+        "apps/progress/services.py. Mientras ese vocabulario no llegue, sigue conteniendo "
+        "el mismo placeholder en español que glosa_es (ver seed_data.py).",
+    )
+    glosa_es = models.CharField(
+        max_length=150,
+        default="",
+        blank=True,
+        help_text="Glosa/etiqueta en español para mostrar en la UI (ej. junto al audio). "
+        "Independiente de `palabra`: no se usa para validar la escritura del usuario.",
+    )
     sprite_key = models.CharField(
         max_length=100,
         help_text="Clave del frame en el texture atlas del frontend (ej. 'chair_wood_a'); "
@@ -62,6 +75,7 @@ class ObjetoInteractivo(models.Model):
         # NUNCA usar unidecode ni eliminar diacríticos: el saltillo (Ꞌ) y las
         # vocales largas son fonémicamente distintivos, solo normalizamos forma.
         self.palabra = unicodedata.normalize("NFC", self.palabra)
+        self.glosa_es = unicodedata.normalize("NFC", self.glosa_es)
         super().save(*args, **kwargs)
 
     def __str__(self):
