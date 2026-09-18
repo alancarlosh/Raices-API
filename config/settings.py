@@ -152,16 +152,19 @@ REST_FRAMEWORK = {
 # apuntar al origen real donde corre Raices-Front, sin slash final.
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
 
-# Envío de correo (recuperación de contraseña). EMAIL_BACKEND por defecto es
-# 'console': el correo se imprime en el log del servidor, no se envía de
-# verdad — deliberado mientras no se decida un servicio de correo real
-# (SMTP de un proveedor transaccional, credenciales, etc.) para producción.
-# Las variables EMAIL_HOST/EMAIL_HOST_USER/etc. ya están listas para
-# cualquier proveedor SMTP estándar el día que se decida uno — no depende de
-# ningún paquete nuevo (usa el backend SMTP que ya trae Django).
+# Envío de correo (recuperación de contraseña). Proveedor elegido por Alan:
+# Brevo (SMTP transaccional, 300 correos/día gratis de forma permanente,
+# smtp-relay.brevo.com). EMAIL_BACKEND sigue en 'console' por defecto (el
+# correo se imprime en el log del servidor, no se envía de verdad) hasta que
+# existan credenciales SMTP reales — Render no las tiene todavía, así que en
+# producción esto sigue sin entregar correos hasta que se configuren las
+# variables de entorno de abajo (EMAIL_BACKEND=...smtp.EmailBackend,
+# EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, DEFAULT_FROM_EMAIL) con los datos de
+# la cuenta Brevo de Alan. EMAIL_HOST/EMAIL_PORT/EMAIL_USE_TLS ya traen el
+# default correcto para Brevo y no deberían necesitar overridearse.
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-responder@raices.local")
 EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
-EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp-relay.brevo.com")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
