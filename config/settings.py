@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "apps.accounts",
     "apps.languages",
@@ -140,6 +141,12 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "registro": "10/min",
         "token_obtain": "10/min",
+        # Por cuenta objetivo (PorCuentaScopedRateThrottle, ver
+        # apps/accounts/throttling.py), no por IP — más estricto que
+        # token_obtain porque su propósito específico es frenar fuerza
+        # bruta contra una sola cuenta sin importar cuántas IPs use el
+        # atacante.
+        "token_obtain_por_cuenta": "5/min",
         # Más estricto que registro/token_obtain: cada solicitud dispara un
         # envío de correo real, así que el abuso aquí es más costoso
         # (spam a la bandeja de alguien) que solo intentos fallidos.
@@ -187,6 +194,21 @@ SIMPLE_JWT = {
     # blacklist porque blacklistear solo cubre refresh tokens — un access
     # token robado seguiría vivo hasta su propia expiración de todos modos.
     "CHECK_REVOKE_TOKEN": True,
+    # El mismo refresh token de 7 días servía indefinidamente hasta su
+    # expiración natural — ROTATE_REFRESH_TOKENS hace que cada uso de
+    # /api/token/refresh/ emita un refresh nuevo, y BLACKLIST_AFTER_ROTATION
+    # (junto con rest_framework_simplejwt.token_blacklist en INSTALLED_APPS,
+    # arriba) es lo que de verdad invalida el anterior — sin eso, "rotar"
+    # solo emitiría uno nuevo dejando el viejo también válido, sin cerrar
+    # nada. IMPORTANTE para quien consuma esto: la respuesta de
+    # /api/token/refresh/ ahora incluye un campo "refresh" nuevo además de
+    # "access" — el cliente debe guardar y usar ESE en vez de reutilizar el
+    # que ya tenía, o su segundo refresh fallará (el viejo queda
+    # blacklisteado en cuanto se usa una vez). Raices-Front's
+    # refreshAccessToken() todavía no hace esto — ver el mensaje a
+    # raices-front-11 del 2026-09-18/19 sobre este cambio de contrato.
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 # Caché en memoria para desarrollo; en producción conviene apuntar a algo

@@ -129,23 +129,54 @@ def test_registro_limita_intentos_por_minuto():
     assert respuesta.status_code == 429
 
 
-def test_token_obtain_limita_intentos_por_minuto():
+def test_token_obtain_limita_intentos_por_ip():
+    # Usa un username distinto en cada intento para que el throttle POR
+    # CUENTA (más estricto, 5/min) nunca se dispare — así se aísla el límite
+    # por IP (10/min) del test de más abajo.
     cache.clear()
-    UsuarioFactory(username="limite_login")
     client = APIClient()
 
-    for _ in range(10):
+    for i in range(10):
+        UsuarioFactory(username=f"limite_login_ip_{i}")
         respuesta = client.post(
             "/api/token/",
-            {"username": "limite_login", "password": "contraseña-incorrecta"},
+            {"username": f"limite_login_ip_{i}", "password": "contraseña-incorrecta"},
             format="json",
+        )
+        assert respuesta.status_code == 401
+
+    UsuarioFactory(username="limite_login_ip_extra")
+    respuesta = client.post(
+        "/api/token/",
+        {"username": "limite_login_ip_extra", "password": "contraseña-incorrecta"},
+        format="json",
+    )
+    assert respuesta.status_code == 429
+
+
+def test_token_obtain_limita_intentos_por_cuenta_aunque_la_ip_cambie():
+    # Un atacante con muchas IPs distintas no debería tener tope infinito
+    # contra UNA sola cuenta — cada intento aquí viene de una IP (X-Forwarded-
+    # For) distinta, así que si esto se detiene es por PorCuentaScopedRateThrottle,
+    # no por el throttle de IP.
+    cache.clear()
+    UsuarioFactory(username="limite_login_cuenta")
+    client = APIClient()
+
+    for i in range(5):
+        respuesta = client.post(
+            "/api/token/",
+            {"username": "limite_login_cuenta", "password": "contraseña-incorrecta"},
+            format="json",
+            HTTP_X_FORWARDED_FOR=f"203.0.113.{i}",
         )
         assert respuesta.status_code == 401
 
     respuesta = client.post(
         "/api/token/",
-        {"username": "limite_login", "password": "contraseña-incorrecta"},
+        {"username": "limite_login_cuenta", "password": "contraseña-incorrecta"},
         format="json",
+        HTTP_X_FORWARDED_FOR="203.0.113.99",
     )
     assert respuesta.status_code == 429
 
@@ -167,6 +198,45 @@ def test_me_requiere_autenticacion():
     respuesta = APIClient().get("/api/me/")
 
     assert respuesta.status_code == 401
+
+
+def test_token_refresh_rota_el_refresh_token():
+    usuario = UsuarioFactory(username="rota_refresh")
+    usuario.set_password("ContraseñaSegura123")
+    usuario.save()
+
+    login = APIClient().post(
+        "/api/token/", {"username": "rota_refresh", "password": "ContraseñaSegura123"}, format="json"
+    )
+    refresh_original = login.data["refresh"]
+
+    respuesta = APIClient().post("/api/token/refresh/", {"refresh": refresh_original}, format="json")
+
+    assert respuesta.status_code == 200
+    assert "refresh" in respuesta.data
+    assert respuesta.data["refresh"] != refresh_original
+
+
+def test_token_refresh_invalida_el_refresh_viejo_despues_de_usarlo():
+    # Antes de ROTATE_REFRESH_TOKENS+BLACKLIST_AFTER_ROTATION, el mismo
+    # refresh token servía indefinidamente hasta su expiración natural (7
+    # días) sin importar cuántas veces se usara.
+    usuario = UsuarioFactory(username="refresh_usado_dos_veces")
+    usuario.set_password("ContraseñaSegura123")
+    usuario.save()
+
+    login = APIClient().post(
+        "/api/token/",
+        {"username": "refresh_usado_dos_veces", "password": "ContraseñaSegura123"},
+        format="json",
+    )
+    refresh_original = login.data["refresh"]
+
+    primer_uso = APIClient().post("/api/token/refresh/", {"refresh": refresh_original}, format="json")
+    assert primer_uso.status_code == 200
+
+    segundo_uso = APIClient().post("/api/token/refresh/", {"refresh": refresh_original}, format="json")
+    assert segundo_uso.status_code == 401
 
 
 def _uid_token_para(usuario):

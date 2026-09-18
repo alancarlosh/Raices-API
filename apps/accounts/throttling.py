@@ -24,3 +24,43 @@ class RealIpScopedRateThrottle(ScopedRateThrottle):
         if xff:
             return xff.split(",")[0].strip()
         return request.META.get("REMOTE_ADDR")
+
+
+class PorCuentaScopedRateThrottle(ScopedRateThrottle):
+    """ScopedRateThrottle que limita por CUENTA objetivo (el `username` del
+    body), no por IP.
+
+    RealIpScopedRateThrottle ya limita /api/token/ por IP, pero eso no
+    protege una cuenta específica: alguien con muchas IPs distintas (una
+    botnet, una VPN rotativa) sigue sin tope real contra un solo username.
+    Se usa JUNTO con el throttle de IP en la vista (ver
+    TokenObtainPairThrottledView), no en su lugar.
+
+    Preferido sobre instalar `django-axes`: esta app ya resuelve el caso con
+    el mismo mecanismo de ventana rodante en caché que el resto del proyecto
+    usa para IP (sin modelos/migraciones nuevas, sin backend de auth
+    adicional) — suficiente para el volumen de este proyecto. axes sería más
+    robusto (cool-off configurable, señales, panel en el admin) pero es una
+    dependencia más para un caso que esta clase ya cubre.
+
+    Si el body no trae `username` (o no es JSON parseable), no se aplica
+    este throttle en particular — el de IP sigue cubriendo ese caso.
+
+    Usa su propio `scope_attr` (en vez del `throttle_scope` heredado de
+    ScopedRateThrottle) para poder convivir con RealIpScopedRateThrottle en
+    la misma vista con una tasa distinta — si ambos leyeran `throttle_scope`
+    compartirían el mismo scope/tasa en vez de limitar cada uno lo suyo.
+    """
+
+    scope_attr = "throttle_scope_por_cuenta"
+
+    def get_cache_key(self, request, view):
+        try:
+            username = request.data.get("username")
+        except Exception:
+            username = None
+
+        if not username:
+            return None
+
+        return self.cache_format % {"scope": self.scope, "ident": username}

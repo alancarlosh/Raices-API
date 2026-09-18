@@ -11,7 +11,7 @@ from .serializers import (
     SolicitarResetPasswordSerializer,
     UsuarioSerializer,
 )
-from .throttling import RealIpScopedRateThrottle
+from .throttling import PorCuentaScopedRateThrottle, RealIpScopedRateThrottle
 
 
 class MeView(APIView):
@@ -30,10 +30,17 @@ class MeView(APIView):
 
 class TokenObtainPairThrottledView(TokenObtainPairView):
     """POST /api/token/ con rate limiting — la API ya está en una URL pública,
-    sin límite cualquiera puede intentar fuerza bruta contra contraseñas."""
+    sin límite cualquiera puede intentar fuerza bruta contra contraseñas.
 
-    throttle_classes = [RealIpScopedRateThrottle]
+    Dos throttles independientes: por IP (RealIpScopedRateThrottle) Y por la
+    cuenta objetivo (PorCuentaScopedRateThrottle) — sin el segundo, un
+    atacante con muchas IPs distintas podría seguir intentando fuerza bruta
+    contra un solo username sin tope real.
+    """
+
+    throttle_classes = [RealIpScopedRateThrottle, PorCuentaScopedRateThrottle]
     throttle_scope = "token_obtain"
+    throttle_scope_por_cuenta = "token_obtain_por_cuenta"
 
 
 class RegistroView(APIView):
