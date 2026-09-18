@@ -1,6 +1,5 @@
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -12,6 +11,7 @@ from .serializers import (
     SolicitarResetPasswordSerializer,
     UsuarioSerializer,
 )
+from .throttling import RealIpScopedRateThrottle
 
 
 class MeView(APIView):
@@ -32,7 +32,7 @@ class TokenObtainPairThrottledView(TokenObtainPairView):
     """POST /api/token/ con rate limiting — la API ya está en una URL pública,
     sin límite cualquiera puede intentar fuerza bruta contra contraseñas."""
 
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [RealIpScopedRateThrottle]
     throttle_scope = "token_obtain"
 
 
@@ -45,7 +45,7 @@ class RegistroView(APIView):
     """
 
     permission_classes = [AllowAny]
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [RealIpScopedRateThrottle]
     throttle_scope = "registro"
 
     def post(self, request):
@@ -75,7 +75,7 @@ class SolicitarResetPasswordView(APIView):
     """
 
     permission_classes = [AllowAny]
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [RealIpScopedRateThrottle]
     throttle_scope = "password_reset"
 
     def post(self, request):
@@ -95,7 +95,7 @@ class ConfirmarResetPasswordView(APIView):
     SolicitarResetPasswordView."""
 
     permission_classes = [AllowAny]
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [RealIpScopedRateThrottle]
     throttle_scope = "password_reset"
 
     def post(self, request):

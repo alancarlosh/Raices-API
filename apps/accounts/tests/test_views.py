@@ -219,6 +219,43 @@ def test_confirmar_reset_cambia_la_contrasena_con_token_valido():
     assert usuario.check_password("NuevaContraseñaSegura123")
 
 
+def test_confirmar_reset_invalida_los_tokens_emitidos_antes_del_cambio():
+    # Sin CHECK_REVOKE_TOKEN, una cuenta comprometida seguiría accesible con
+    # el access/refresh token robado hasta su propia expiración (hasta 1h/7d
+    # después) aunque el dueño ya haya restablecido su contraseña — este es
+    # justo el escenario que CHECK_REVOKE_TOKEN (SIMPLE_JWT en settings.py)
+    # cierra.
+    cache.clear()
+    usuario = UsuarioFactory(username="con_sesion_previa")
+    usuario.set_password("defaultpassword123")
+    usuario.save()
+
+    login = APIClient().post(
+        "/api/token/",
+        {"username": "con_sesion_previa", "password": "defaultpassword123"},
+        format="json",
+    )
+    access_previo = login.data["access"]
+
+    # De verdad sirve antes del reset.
+    respuesta_antes = APIClient().get(
+        "/api/me/", HTTP_AUTHORIZATION=f"Bearer {access_previo}"
+    )
+    assert respuesta_antes.status_code == 200
+
+    uid, token = _uid_token_para(usuario)
+    APIClient().post(
+        "/api/restablecer-password/confirmar/",
+        {"uid": uid, "token": token, "password": "NuevaContraseñaSegura123"},
+        format="json",
+    )
+
+    respuesta_despues = APIClient().get(
+        "/api/me/", HTTP_AUTHORIZATION=f"Bearer {access_previo}"
+    )
+    assert respuesta_despues.status_code == 401
+
+
 def test_confirmar_reset_rechaza_token_invalido():
     cache.clear()
     usuario = UsuarioFactory()

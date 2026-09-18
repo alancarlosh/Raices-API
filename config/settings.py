@@ -173,6 +173,20 @@ EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # Sin esto, restablecer la contraseña (apps/accounts/services.py) no
+    # invalida los tokens ya emitidos: un access token robado seguiría
+    # funcionando hasta 1h más y un refresh token hasta 7 días más,
+    # anulando el propósito del reset (cuenta comprometida -> reset -> el
+    # atacante sigue adentro). CHECK_REVOKE_TOKEN mete un hash del password
+    # actual del usuario en cada token emitido (for_user()) y lo revalida en
+    # cada request autenticado (JWTAuthentication.get_user()) — en cuanto
+    # cambia el password, TODO token emitido antes (access o refresh, y
+    # cualquier access token nuevo generado a partir de un refresh viejo,
+    # ya que RefreshToken.access_token copia este claim) deja de servir de
+    # inmediato. Se prefiere sobre instalar rest_framework_simplejwt.token_
+    # blacklist porque blacklistear solo cubre refresh tokens — un access
+    # token robado seguiría vivo hasta su propia expiración de todos modos.
+    "CHECK_REVOKE_TOKEN": True,
 }
 
 # Caché en memoria para desarrollo; en producción conviene apuntar a algo
