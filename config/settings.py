@@ -140,8 +140,32 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "registro": "10/min",
         "token_obtain": "10/min",
+        # Más estricto que registro/token_obtain: cada solicitud dispara un
+        # envío de correo real, así que el abuso aquí es más costoso
+        # (spam a la bandeja de alguien) que solo intentos fallidos.
+        "password_reset": "5/min",
     },
 }
+
+# URL pública del frontend, usada para construir el enlace de restablecer
+# contraseña que se envía por correo (ver apps/accounts/services.py). Debe
+# apuntar al origen real donde corre Raices-Front, sin slash final.
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:8080").rstrip("/")
+
+# Envío de correo (recuperación de contraseña). EMAIL_BACKEND por defecto es
+# 'console': el correo se imprime en el log del servidor, no se envía de
+# verdad — deliberado mientras no se decida un servicio de correo real
+# (SMTP de un proveedor transaccional, credenciales, etc.) para producción.
+# Las variables EMAIL_HOST/EMAIL_HOST_USER/etc. ya están listas para
+# cualquier proveedor SMTP estándar el día que se decida uno — no depende de
+# ningún paquete nuevo (usa el backend SMTP que ya trae Django).
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-responder@raices.local")
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),

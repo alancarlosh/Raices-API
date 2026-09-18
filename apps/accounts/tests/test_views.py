@@ -1,5 +1,9 @@
 import pytest
+from django.contrib.auth.tokens import default_token_generator
+from django.core import mail
 from django.core.cache import cache
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APIClient
 
 from apps.accounts.models import Usuario
@@ -29,7 +33,12 @@ def test_registro_crea_usuario_y_devuelve_tokens():
 def test_registro_no_permite_elegir_rol():
     respuesta = APIClient().post(
         "/api/registro/",
-        {"username": "aspirante_admin", "password": "ContraseñaSegura123", "rol": "admin"},
+        {
+            "username": "aspirante_admin",
+            "email": "aspirante_admin@example.com",
+            "password": "ContraseñaSegura123",
+            "rol": "admin",
+        },
         format="json",
     )
 
@@ -43,17 +52,40 @@ def test_registro_rechaza_username_duplicado():
 
     respuesta = APIClient().post(
         "/api/registro/",
-        {"username": "ya_existe", "password": "ContraseñaSegura123"},
+        {"username": "ya_existe", "email": "otro@example.com", "password": "ContraseñaSegura123"},
         format="json",
     )
 
     assert respuesta.status_code == 400
 
 
+def test_registro_rechaza_email_duplicado():
+    UsuarioFactory(email="repetido@example.com")
+
+    respuesta = APIClient().post(
+        "/api/registro/",
+        {"username": "alguien_mas", "email": "repetido@example.com", "password": "ContraseñaSegura123"},
+        format="json",
+    )
+
+    assert respuesta.status_code == 400
+
+
+def test_registro_rechaza_sin_email():
+    respuesta = APIClient().post(
+        "/api/registro/",
+        {"username": "sin_correo", "password": "ContraseñaSegura123"},
+        format="json",
+    )
+
+    assert respuesta.status_code == 400
+    assert "email" in respuesta.data
+
+
 def test_registro_rechaza_password_debil():
     respuesta = APIClient().post(
         "/api/registro/",
-        {"username": "alguien", "password": "123"},
+        {"username": "alguien", "email": "alguien@example.com", "password": "123"},
         format="json",
     )
 
@@ -63,7 +95,7 @@ def test_registro_rechaza_password_debil():
 def test_usuario_registrado_puede_hacer_login_normal_despues():
     APIClient().post(
         "/api/registro/",
-        {"username": "login_despues", "password": "ContraseñaSegura123"},
+        {"username": "login_despues", "email": "login_despues@example.com", "password": "ContraseñaSegura123"},
         format="json",
     )
 
@@ -84,14 +116,14 @@ def test_registro_limita_intentos_por_minuto():
     for i in range(10):
         respuesta = client.post(
             "/api/registro/",
-            {"username": f"limite_registro_{i}", "password": "ContraseñaSegura123"},
+            {"username": f"limite_registro_{i}", "email": f"limite_registro_{i}@example.com", "password": "ContraseñaSegura123"},
             format="json",
         )
         assert respuesta.status_code == 201
 
     respuesta = client.post(
         "/api/registro/",
-        {"username": "limite_registro_extra", "password": "ContraseñaSegura123"},
+        {"username": "limite_registro_extra", "email": "limite_registro_extra@example.com", "password": "ContraseñaSegura123"},
         format="json",
     )
     assert respuesta.status_code == 429
@@ -135,3 +167,122 @@ def test_me_requiere_autenticacion():
     respuesta = APIClient().get("/api/me/")
 
     assert respuesta.status_code == 401
+
+
+def _uid_token_para(usuario):
+    uid = urlsafe_base64_encode(force_bytes(usuario.pk))
+    token = default_token_generator.make_token(usuario)
+    return uid, token
+
+
+def test_solicitar_reset_envia_correo_con_enlace_si_el_email_existe():
+    # password_reset es un scope de throttle compartido por las 6 pruebas de
+    # este bloque (ver test_restablecer_password_limita_intentos_por_minuto);
+    # se limpia al inicio de cada una para que no se contaminen entre sí.
+    cache.clear()
+    usuario = UsuarioFactory(email="conoce@example.com")
+
+    respuesta = APIClient().post(
+        "/api/restablecer-password/", {"email": "conoce@example.com"}, format="json"
+    )
+
+    assert respuesta.status_code == 200
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == ["conoce@example.com"]
+    assert "restablecer-password?uid=" in mail.outbox[0].body
+    assert f"uid={urlsafe_base64_encode(force_bytes(usuario.pk))}" in mail.outbox[0].body
+
+
+def test_solicitar_reset_responde_igual_y_no_envia_correo_si_el_email_no_existe():
+    cache.clear()
+    respuesta = APIClient().post(
+        "/api/restablecer-password/", {"email": "nadie@example.com"}, format="json"
+    )
+
+    assert respuesta.status_code == 200
+    assert len(mail.outbox) == 0
+
+
+def test_confirmar_reset_cambia_la_contrasena_con_token_valido():
+    cache.clear()
+    usuario = UsuarioFactory()
+    uid, token = _uid_token_para(usuario)
+
+    respuesta = APIClient().post(
+        "/api/restablecer-password/confirmar/",
+        {"uid": uid, "token": token, "password": "NuevaContraseñaSegura123"},
+        format="json",
+    )
+
+    assert respuesta.status_code == 200
+    usuario.refresh_from_db()
+    assert usuario.check_password("NuevaContraseñaSegura123")
+
+
+def test_confirmar_reset_rechaza_token_invalido():
+    cache.clear()
+    usuario = UsuarioFactory()
+    uid, _ = _uid_token_para(usuario)
+
+    respuesta = APIClient().post(
+        "/api/restablecer-password/confirmar/",
+        {"uid": uid, "token": "token-invalido", "password": "NuevaContraseñaSegura123"},
+        format="json",
+    )
+
+    assert respuesta.status_code == 400
+    usuario.refresh_from_db()
+    assert not usuario.check_password("NuevaContraseñaSegura123")
+
+
+def test_confirmar_reset_rechaza_token_ya_usado():
+    cache.clear()
+    usuario = UsuarioFactory()
+    uid, token = _uid_token_para(usuario)
+    client = APIClient()
+
+    primera = client.post(
+        "/api/restablecer-password/confirmar/",
+        {"uid": uid, "token": token, "password": "PrimeraContraseña123"},
+        format="json",
+    )
+    assert primera.status_code == 200
+
+    # El token de Django incorpora el hash de contraseña vigente: al haber
+    # cambiado, el mismo token ya no es válido para un segundo uso.
+    segunda = client.post(
+        "/api/restablecer-password/confirmar/",
+        {"uid": uid, "token": token, "password": "SegundaContraseña456"},
+        format="json",
+    )
+    assert segunda.status_code == 400
+
+
+def test_confirmar_reset_rechaza_password_debil():
+    cache.clear()
+    usuario = UsuarioFactory()
+    uid, token = _uid_token_para(usuario)
+
+    respuesta = APIClient().post(
+        "/api/restablecer-password/confirmar/",
+        {"uid": uid, "token": token, "password": "123"},
+        format="json",
+    )
+
+    assert respuesta.status_code == 400
+
+
+def test_restablecer_password_limita_intentos_por_minuto():
+    cache.clear()
+    client = APIClient()
+
+    for _ in range(5):
+        respuesta = client.post(
+            "/api/restablecer-password/", {"email": "quien-sea@example.com"}, format="json"
+        )
+        assert respuesta.status_code == 200
+
+    respuesta = client.post(
+        "/api/restablecer-password/", {"email": "quien-sea@example.com"}, format="json"
+    )
+    assert respuesta.status_code == 429
