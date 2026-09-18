@@ -7,13 +7,32 @@ from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-dev-only-change-in-production")
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    # RENDER es una env var que Render inyecta automáticamente en todo
+    # servicio desplegado ahí (no algo que este proyecto define) — es la
+    # señal real de "esto es producción", más confiable que DEBUG (que
+    # podría estar mal configurado, aunque render.yaml ya lo fija en False).
+    # Sin este chequeo, un despliegue real sin SECRET_KEY arrancaría en
+    # silencio con la clave insegura de abajo en vez de fallar ruidosamente
+    # (render.yaml declara SECRET_KEY con generateValue=true, así que hoy
+    # nunca falta en un deploy normal, pero el código no lo garantizaba).
+    # Deliberadamente NO se ata a DEBUG: correr `pytest`/`runserver` en
+    # local sin ningún .env (el caso normal de este repo) debe seguir
+    # funcionando con la clave de desarrollo de abajo sin fricción.
+    if os.environ.get("RENDER"):
+        raise ImproperlyConfigured(
+            "SECRET_KEY no está definido en un despliegue de Render -- nunca "
+            "debe arrancar en producción con la clave insegura de desarrollo."
+        )
+    SECRET_KEY = "django-insecure-dev-only-change-in-production"
 
 # Falla cerrado: sin DEBUG explícito en el entorno, se asume producción. Dev
 # local siempre define DEBUG=True en .env (ver .env.example).
@@ -226,3 +245,35 @@ CORS_ALLOWED_ORIGINS = [
     ).split(",")
     if o.strip()
 ]
+
+# Endurecimiento HTTPS/cookies, solo cuando de verdad corre en Render (ver
+# RENDER más abajo) -- en dev local el servidor corre en HTTP plano, así que
+# SECURE_SSL_REDIRECT o las cookies "Secure" romperían runserver/el admin
+# localmente. Deliberadamente NO atado a `not DEBUG`: este repo no trae un
+# .env por defecto (correr `pytest`/`runserver` así en local es el flujo
+# normal, ver la nota de SECRET_KEY arriba), así que DEBUG cae a False ahí
+# también -- atarlo a DEBUG habría activado esto en cada corrida de tests.
+#
+# Render termina TLS en su borde y reenvía la petición a la app por HTTP
+# plano, así que request.is_secure() de Django siempre daría False (y
+# SECURE_SSL_REDIRECT causaría un loop de redirects) sin decirle a Django
+# que confíe en X-Forwarded-Proto -- SECURE_PROXY_SSL_HEADER es justo eso.
+# Es seguro confiar en ese header aquí porque Render es el único punto de
+# entrada a esta app (no está expuesta en un puerto público aparte que
+# alguien pudiera usar para forjar el header directamente).
+#
+# render.yaml de este proyecto NO define healthCheckPath, así que Render
+# solo hace un chequeo TCP de que el puerto esté abierto (nunca un GET real
+# a la app) -- si algún día se agrega un healthCheckPath ahí, esa ruta
+# necesitaría entrar a SECURE_REDIRECT_EXEMPT para no romper ese chequeo con
+# un redirect a HTTPS.
+if os.environ.get("RENDER"):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Conservador a propósito (1h, no el típico 1 año) hasta confirmar en
+    # producción real que HTTPS/el dominio están estables -- uno malo con
+    # HSTS a un año es mucho más difícil de revertir para los usuarios que
+    # ya lo recibieron.
+    SECURE_HSTS_SECONDS = 3600
