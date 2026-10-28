@@ -61,11 +61,24 @@ reutilizan exactamente el mismo sprite_key ya usado en Sala/Recámara
 (bookshelf_a, lamp_table_a) porque son el mismo objeto visual.
 
 
---- AMPLIACION 2026-10: de 36 a 108 objetos, y `glosa_es` deja de ser el slug
+--- AMPLIACION 2026-10: de 36 objetos a los que hay hoy, y `glosa_es` deja
+--- de ser el slug
 ---
 
-Medido contra la API corriendo: de las 108 etiquetas que el recorrido 3D
-ensena, solo 28 resolvian contra un objeto. Dos causas distintas:
+NO SE ESCRIBEN AQUI LOS CONTEOS. Esta seccion decia "de 36 a 108 objetos" y
+"73 de los 108 no tienen sprite", y ninguna de las dos cifras era cierta:
+el 108 venia del numero de etiquetas del recorrido 3D del frontend, no de
+esta lista, que tiene 102 filas. Esa cifra equivocada se cito despues como
+tamano del catalogo de vocabulario y contribuyo a que la tesis afirmara 109
+terminos; el numero defendible era otro. Para que no vuelva a pasar, los
+conteos se DERIVAN de los datos con conteos() (abajo) y los verifica
+apps/content/tests/test_seed_data.py -- si alguien agrega vocabulario, la
+prueba falla y obliga a actualizar la cifra a conciencia en vez de dejar
+una vieja envejeciendo en un comentario que nadie vuelve a derivar.
+
+Medido contra la API corriendo cuando se hizo la ampliacion: de las
+etiquetas que el recorrido 3D ensena, solo 28 resolvian contra un objeto.
+Dos causas distintas:
 
 1. FALTABAN ESCENAS Y PALABRAS. El mundo caminable tiene ocho recintos --
    los cinco cuartos mas patio, corral y huerto -- y aqui solo habia cinco.
@@ -95,14 +108,17 @@ separacion es la que el modelo siempre describio:
     espanol, y es por la que el frontend empareja.
 
 Sigue siendo placeholder: `palabra` guarda espanol, no totonaco. Lo que
-cambia es que ahora las 108 palabras del mundo tienen fila y puntuan.
+cambia es que ahora las palabras del mundo caminable tienen fila y puntuan.
 
-SPRITES: 73 de los 108 no tienen sprite en el Kenney Furniture Kit, que es
-un kit de muebles y no trae metate, comal, temazcal ni animales. Llevan una
-clave descriptiva que todavia no existe ("metate_a"), y el modo 2D los
-dibuja como recuadro etiquetado -- el mismo trato que "ropero" lleva desde
-el principio. Es honesto: la palabra existe en el temario aunque no haya
-arte. Si alguna vez molesta, la decision es del 2D, no de estos datos.
+SPRITES: la mayoria de estas claves no tienen sprite en el Kenney Furniture
+Kit, que es un kit de muebles y no trae metate, comal, temazcal ni animales.
+Llevan una clave descriptiva que todavia no existe ("metate_a"), y el modo
+2D los dibuja como recuadro etiquetado -- el mismo trato que "ropero" lleva
+desde el principio. Es honesto: la palabra existe en el temario aunque no
+haya arte. Si alguna vez molesta, la decision es del 2D, no de estos datos.
+Medido el 2026-10-27 contra los .png reales de Raices-Front: 74 de las 102
+filas. No se verifica aqui a proposito -- depende del arbol de archivos de
+OTRO repo, que no existe en el entorno de pruebas de este; de ahi la fecha.
 """
 
 ESCENAS_SEED = {
@@ -271,6 +287,29 @@ ESCENAS_SEED = {
         ],
     },
 }
+
+
+def conteos() -> dict[str, int]:
+    """Los conteos de esta semilla, DERIVADOS de los datos.
+
+    Existe para que nadie vuelva a escribir una de estas cifras a mano en un
+    comentario, en un README ni en la tesis: la unica que estuvo escrita a
+    mano ("108 objetos") era falsa, nadie la volvio a derivar en semanas, y
+    acabo citada como tamano del catalogo de vocabulario. Lo verifica
+    apps/content/tests/test_seed_data.py.
+
+    Ojo con `filas` vs `palabras_unicas`: una palabra que aparece en varios
+    cuartos (ventana, lampara, silla, librero, planta) son varias filas de
+    ObjetoInteractivo pero un solo termino de vocabulario. Confundirlas es
+    justo el error que infla un catalogo.
+    """
+    filas = [(p, g, s) for datos in ESCENAS_SEED.values() for p, g, s in datos["objetos"]]
+    return {
+        "escenas": len(ESCENAS_SEED),
+        "filas": len(filas),
+        "palabras_unicas": len({g for _, g, _ in filas}),
+        "sprite_keys_unicas": len({s for _, _, s in filas}),
+    }
 
 
 def palabras_unicas() -> list[str]:
