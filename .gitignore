@@ -2,6 +2,9 @@ venv/
 __pycache__/
 *.pyc
 db.sqlite3
+# Respaldos manuales de la base local (db.sqlite3.bak-20261017-1342 y
+# similares): el patrón de arriba no los cubre y pesan cientos de KB.
+db.sqlite3.bak*
 .env
 .DS_Store
 *.egg-info/
