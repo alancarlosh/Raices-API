@@ -59,72 +59,237 @@ Cocina pero con sprite_key distinto ("office_chair_a", silla de oficina con
 ruedas, vs. "chair_a" la silla de comedor). "librero" y "lampara" sí
 reutilizan exactamente el mismo sprite_key ya usado en Sala/Recámara
 (bookshelf_a, lamp_table_a) porque son el mismo objeto visual.
+
+
+--- AMPLIACION 2026-10: de 36 a 108 objetos, y `glosa_es` deja de ser el slug
+---
+
+Medido contra la API corriendo: de las 108 etiquetas que el recorrido 3D
+ensena, solo 28 resolvian contra un objeto. Dos causas distintas:
+
+1. FALTABAN ESCENAS Y PALABRAS. El mundo caminable tiene ocho recintos --
+   los cinco cuartos mas patio, corral y huerto -- y aqui solo habia cinco.
+   Las 32 piezas de fuera (vaca, burro, maiz, temazcal, metate...) tenian
+   puntero y audio en el mundo, pero `markDescubierto` devolvia 404 y el
+   intento de escritura contestaba "validacion no disponible": practicar
+   ahi no sumaba nada. Y dentro de la casa tambien faltaban: la cocina
+   ensena 19 palabras y aqui habia 8.
+
+2. LAS QUE SI EXISTIAN TAMPOCO EMPAREJABAN TODAS. El frontend busca su
+   objeto comparando `glosa_es` con la etiqueta del punto (resolveHotspot
+   en hotspots.ts), y la etiqueta es la palabra en espanol DE VERDAD, con
+   acentos y espacios: "sofa" no es "sofá", "mesa_centro" no es "mesa de
+   centro". Ocho de los 36 objetos sembrados fallaban solo por eso.
+
+De ahi que cada objeto sea ahora una TERNA (palabra, glosa_es, sprite_key)
+en vez de un par. Los dos primeros campos ya no son el mismo string, y la
+separacion es la que el modelo siempre describio:
+
+  * `palabra` sigue siendo el SLUG sin acentos (sofa, mesa_centro, maiz).
+    Es la clave por escena, es el nombre del archivo de audio placeholder,
+    y es lo que se compara contra lo que teclea el alumno. Tiene que poder
+    TECLEARSE con el teclado del proyecto, que es el alfabeto totonaco
+    (INALI/UV) y no tiene vocales acentuadas: "sofá" seria imposible de
+    escribir ahi, "sofa" no.
+  * `glosa_es` es la etiqueta que se MUESTRA, con su ortografia real en
+    espanol, y es por la que el frontend empareja.
+
+Sigue siendo placeholder: `palabra` guarda espanol, no totonaco. Lo que
+cambia es que ahora las 108 palabras del mundo tienen fila y puntuan.
+
+SPRITES: 73 de los 108 no tienen sprite en el Kenney Furniture Kit, que es
+un kit de muebles y no trae metate, comal, temazcal ni animales. Llevan una
+clave descriptiva que todavia no existe ("metate_a"), y el modo 2D los
+dibuja como recuadro etiquetado -- el mismo trato que "ropero" lleva desde
+el principio. Es honesto: la palabra existe en el temario aunque no haya
+arte. Si alguna vez molesta, la decision es del 2D, no de estos datos.
 """
 
 ESCENAS_SEED = {
     "cocina": {
         "nombre": "Cocina",
         "objetos": [
-            ("silla", "chair_a"),
-            ("mesa", "table_a"),
-            ("puerta", "door_a"),
-            ("ventana", "window_a"),
-            ("estufa", "stove_a"),
-            ("refrigerador", "fridge_a"),
-            ("plato", "plate_a"),
-            ("vaso", "cup_a"),
+            ("ventana", "ventana", "window_a"),
+            ("estufa", "estufa", "stove_a"),
+            ("refrigerador", "refrigerador", "fridge_a"),
+            ("mesa", "mesa", "table_a"),
+            ("silla", "silla", "chair_a"),
+            ("metate", "metate", "metate_a"),
+            ("metlapil", "metlapil", "metlapil_a"),
+            ("molcajete", "molcajete", "molcajete_a"),
+            ("tejolote", "tejolote", "tejolote_a"),
+            ("fogon", "fogón", "fogon_a"),
+            ("horno", "horno", "horno_a"),
+            ("cantaro", "cántaro", "cantaro_a"),
+            ("olla", "olla", "olla_a"),
+            ("jarro", "jarro", "jarro_a"),
+            ("chiquihuite", "chiquihuite", "chiquihuite_a"),
+            ("costal", "costal", "costal_a"),
+            ("comal", "comal", "comal_a"),
+            ("plato", "plato", "plate_a"),
+            ("vaso", "vaso", "cup_a"),
         ],
     },
     "sala": {
         "nombre": "Sala",
         "objetos": [
-            ("sofa", "sofa_a"),
-            ("mesa_centro", "table_coffee_a"),
-            ("lampara", "lamp_floor_a"),
-            ("televisor", "tv_modern_a"),
-            ("planta", "plant_a"),
-            ("cojin", "cushion_a"),
-            ("librero", "bookshelf_a"),
-            ("ventana", "window_a"),
+            ("ventana", "ventana", "window_a"),
+            ("sofa", "sofá", "sofa_a"),
+            ("librero", "librero", "bookshelf_a"),
+            ("mesa_centro", "mesa de centro", "table_coffee_a"),
+            ("lampara", "lámpara", "lamp_floor_a"),
+            ("televisor", "televisor", "tv_modern_a"),
+            ("planta", "planta", "plant_a"),
+            ("banco", "banco", "banco_a"),
+            ("cortina", "cortina", "cortina_a"),
+            ("escoba", "escoba", "escoba_a"),
+            ("imagen_religiosa", "imagen religiosa", "imagen_religiosa_a"),
+            ("repisa", "repisa", "repisa_a"),
+            ("altar", "altar", "altar_a"),
+            ("vela", "vela", "vela_a"),
+            ("cojin", "cojín", "cushion_a"),
         ],
     },
     "recamara": {
         "nombre": "Recámara",
         "objetos": [
-            ("cama", "bed_a"),
-            ("almohada", "pillow_a"),
-            ("ropero", "wardrobe_a"),
-            ("espejo", "mirror_a"),
-            ("lampara", "lamp_table_a"),
-            ("buro", "nightstand_a"),
-            ("cajonera", "dresser_a"),
-            ("ventana", "window_a"),
+            ("ventana", "ventana", "window_a"),
+            ("cama", "cama", "bed_a"),
+            ("buro", "buró", "nightstand_a"),
+            ("lampara", "lámpara", "lamp_table_a"),
+            ("ropero", "ropero", "wardrobe_a"),
+            ("espejo", "espejo", "mirror_a"),
+            ("cajonera", "cajonera", "dresser_a"),
+            ("hamaca", "hamaca", "hamaca_a"),
+            ("baul", "baúl", "baul_a"),
+            ("petate", "petate", "petate_a"),
+            ("sarape", "sarape", "sarape_a"),
+            ("almohada", "almohada", "pillow_a"),
+            ("rebozo", "rebozo", "rebozo_a"),
         ],
     },
+    # EL BAÑO ES EL UNICO CUARTO DONDE LA AMPLIACION DE OCTUBRE REEMPLAZO
+    # EN VEZ DE SUMAR, Y FUE A PROPOSITO. Se quitaron lavabo, inodoro,
+    # regadera, tina y gabinete (espejo sobrevive, en Recamara).
+    #
+    # Motivo, de la investigacion etnografica que guia el recorrido 3D:
+    # la casa rural totonaca NO TIENE BAÑO DENTRO. Kelly y Palerm, "The
+    # Tajin Totonac" (Smithsonian ISA Pub. 13, 1952, campo 1947-49)
+    # describen el aseo fuera de la casa y la ausencia de instalacion
+    # hidraulica; no hay red de agua ni drenaje que sostengan un inodoro
+    # de tanque ni una regadera. Esas cinco piezas no eran "sin
+    # documentar" como el escritorio o el sofa, que se quedaron con una
+    # advertencia escrita: CONTRADECIAN a la fuente. Esa es la distincion
+    # con la que se decidio cada cuarto.
+    #
+    # Lo que las sustituye es el aseo documentado: balde, jicara, jabon,
+    # peine, cepillo, toalla, palangana, estropajo y letrina.
+    #
+    # ESTA NOTA EXISTE PORQUE FALTABA. La razon vivia solo en el lado del
+    # 3D (blender-pipeline/build_room_bano.py, nota larga en poblar()), y
+    # desde aqui el recorte parecia una regresion -- otra sesion lo
+    # reporto como tal, con razon. Si alguien vuelve a leer esto como un
+    # error, no lo es.
     "bano": {
         "nombre": "Baño",
         "objetos": [
-            ("lavabo", "sink_a"),
-            ("inodoro", "toilet_a"),
-            ("regadera", "shower_a"),
-            ("tina", "bathtub_a"),
-            ("espejo", "mirror_a"),
-            ("gabinete", "cabinet_a"),
+            ("balde", "balde", "balde_a"),
+            ("jicara", "jícara", "jicara_a"),
+            ("jabon", "jabón", "jabon_a"),
+            ("peine", "peine", "peine_a"),
+            ("cepillo", "cepillo", "cepillo_a"),
+            ("toalla", "toalla", "toalla_a"),
+            ("palangana", "palangana", "palangana_a"),
+            ("estropajo", "estropajo", "estropajo_a"),
+            ("letrina", "letrina", "letrina_a"),
         ],
     },
     "estudio": {
         "nombre": "Estudio",
         "objetos": [
-            ("escritorio", "desk_a"),
-            ("computadora", "computer_a"),
-            ("silla", "office_chair_a"),
-            ("librero", "bookshelf_a"),
-            ("lampara", "lamp_table_a"),
-            ("planta", "plant_small_a"),
+            ("escritorio", "escritorio", "desk_a"),
+            ("computadora", "computadora", "computer_a"),
+            ("librero", "librero", "bookshelf_a"),
+            ("silla", "silla", "office_chair_a"),
+            ("lampara", "lámpara", "lamp_table_a"),
+            ("planta", "planta", "plant_small_a"),
+            ("maquina_coser", "máquina de coser", "maquina_coser_a"),
+            ("malacate", "malacate", "malacate_a"),
+            ("hilo", "hilo", "hilo_a"),
+            ("aguja", "aguja", "aguja_a"),
+            ("tijeras", "tijeras", "tijeras_a"),
+            ("telar_cintura", "telar de cintura", "telar_cintura_a"),
+            ("tambor", "tambor", "tambor_a"),
+            ("flauta", "flauta", "flauta_a"),
+        ],
+    },
+    "patio": {
+        "nombre": "Patio",
+        "objetos": [
+            ("temazcal", "temazcal", "temazcal_a"),
+            ("pozo", "pozo", "pozo_a"),
+            ("lavadero", "lavadero", "lavadero_a"),
+            ("batea", "batea", "batea_a"),
+            ("lena", "leña", "lena_a"),
+            ("huacal", "huacal", "huacal_a"),
+            ("guaje", "guaje", "guaje_a"),
+            ("mecapal", "mecapal", "mecapal_a"),
+            ("tronco", "tronco", "tronco_a"),
+        ],
+    },
+    "corral": {
+        "nombre": "Corral",
+        "objetos": [
+            ("cabra", "cabra", "cabra_a"),
+            ("guajolote", "guajolote", "guajolote_a"),
+            ("nidal", "nidal", "nidal_a"),
+            ("gallinero", "gallinero", "gallinero_a"),
+            ("cerdo", "cerdo", "cerdo_a"),
+            ("chiquero", "chiquero", "chiquero_a"),
+            ("otate", "otate", "otate_a"),
+            ("pesebre", "pesebre", "pesebre_a"),
+            ("vaca", "vaca", "vaca_a"),
+            ("burro", "burro", "burro_a"),
+        ],
+    },
+    "huerto": {
+        "nombre": "Huerto",
+        "objetos": [
+            ("maiz", "maíz", "maiz_a"),
+            ("frijol", "frijol", "frijol_a"),
+            ("calabaza", "calabaza", "calabaza_a"),
+            ("espantapajaros", "espantapájaros", "espantapajaros_a"),
+            ("coa", "coa", "coa_a"),
+            ("arbol", "árbol", "arbol_a"),
+            ("platano", "plátano", "platano_a"),
+            ("naranja", "naranja", "naranja_a"),
+            ("limon", "limón", "limon_a"),
+            ("cafe", "café", "cafe_a"),
+            ("chile", "chile", "chile_a"),
+            ("vainilla", "vainilla", "vainilla_a"),
+            ("tule", "tule", "tule_a"),
         ],
     },
 }
 
 
 def palabras_unicas() -> list[str]:
-    return sorted({palabra for datos in ESCENAS_SEED.values() for palabra, _ in datos["objetos"]})
+    """Los slugs, que es lo que nombra cada archivo de audio placeholder."""
+    return sorted({palabra for datos in ESCENAS_SEED.values() for palabra, _, _ in datos["objetos"]})
+
+
+def glosa_de(palabra: str) -> str:
+    """La etiqueta en espanol de un slug, para DECIRLA en el TTS.
+
+    El generador de audio le pasaba a `say` el propio slug, y eso se oye:
+    "imagen_religiosa" lleva un guion bajo que la voz lee o deletrea, y
+    "espantapajaros" sin acento desplaza la silaba tonica -- el TTS espanol
+    acentua donde dice la ortografia, no donde deberia. El archivo se sigue
+    llamando por el slug (es la clave y la URL), pero lo que se PRONUNCIA es
+    la glosa.
+    """
+    for datos in ESCENAS_SEED.values():
+        for slug, glosa, _ in datos["objetos"]:
+            if slug == palabra:
+                return glosa
+    return palabra

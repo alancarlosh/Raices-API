@@ -5,6 +5,7 @@ from apps.accounts.models import Usuario
 from apps.content.models import Escena, ObjetoInteractivo
 from apps.content.seed_data import ESCENAS_SEED
 from apps.languages.models import Lengua
+from apps.progress.models import IntentoEscritura, ProgresoUsuario
 
 DEMO_USERNAME = "demo"
 DEMO_PASSWORD = "Demo12345!"
@@ -16,6 +17,19 @@ _GRID_COLS = 4
 _CELL_W, _CELL_H = 200, 160
 _OBJ_W, _OBJ_H = 64, 64
 _ORIGIN_X, _ORIGIN_Y = 60, 60
+
+
+def _progreso_asociado(objetos) -> tuple[int, int]:
+    """Cuántas filas de progreso/escritura se llevaría por cascada borrar
+    estos objetos — para poder decirlo en voz alta antes de hacerlo, en vez
+    de que el daño sea invisible."""
+    ids = list(objetos.values_list("id", flat=True))
+    if not ids:
+        return 0, 0
+    return (
+        ProgresoUsuario.objects.filter(objeto_id__in=ids).count(),
+        IntentoEscritura.objects.filter(objeto_id__in=ids).count(),
+    )
 
 
 def _url_audio_placeholder(palabra: str, extension: str) -> str:
@@ -33,6 +47,19 @@ class Command(BaseCommand):
         "'python manage.py generate_placeholder_audio' para que las URLs de "
         "audio_ogg/audio_m4a que este comando genera resuelvan a archivos reales."
     )
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--purgar",
+            action="store_true",
+            help=(
+                "BORRA de verdad los objetos que ya no están en ESCENAS_SEED, en vez de "
+                "marcarlos como 'retirado'. DESTRUCTIVO: ProgresoUsuario e IntentoEscritura "
+                "apuntan a ObjetoInteractivo con CASCADE, así que se lleva también el "
+                "progreso y los intentos de escritura de los usuarios que practicaron esas "
+                "palabras. Sólo para limpiar una base local; nunca en el deploy."
+            ),
+        )
 
     def handle(self, *args, **options):
         lengua, _ = Lengua.objects.update_or_create(
@@ -58,10 +85,50 @@ class Command(BaseCommand):
                 },
             )
 
-            palabras_vigentes = [palabra for palabra, _ in objetos]
-            escena.objetos.exclude(palabra__in=palabras_vigentes).delete()
+            palabras_vigentes = [palabra for palabra, _, _ in objetos]
+            sobrantes = escena.objetos.exclude(palabra__in=palabras_vigentes)
 
-            for i, (palabra, sprite_key) in enumerate(objetos):
+            # NO se borra por defecto. ProgresoUsuario e IntentoEscritura
+            # apuntan a ObjetoInteractivo con on_delete=CASCADE, y este
+            # comando corre en CADA build de Render (ver render.yaml): un
+            # `.delete()` aquí significa que cualquier cambio de vocabulario
+            # —no sólo la poda del Baño de octubre, y vamos a seguir
+            # moviendo vocabulario— se lleva por delante el progreso y los
+            # intentos de escritura de quien hubiera practicado esas
+            # palabras, en silencio y en producción.
+            #
+            # Marcarlas como RETIRADO logra lo mismo de cara al usuario
+            # (escena_get_publicada y progreso_resumen filtran por
+            # PUBLICADO, así que desaparecen del recorrido y no cuentan para
+            # los porcentajes) sin destruir nada. Y si una palabra vuelve al
+            # temario, el update_or_create de abajo la repone en PUBLICADO
+            # con su progreso histórico intacto, porque la fila nunca se fue.
+            if options["purgar"]:
+                progresos, intentos = _progreso_asociado(sobrantes)
+                cuantas = sobrantes.count()
+                if cuantas:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"--purgar: borrando {cuantas} objeto(s) de '{nombre_escena}' y, "
+                            f"por cascada, {progresos} fila(s) de progreso y {intentos} "
+                            f"intento(s) de escritura."
+                        )
+                    )
+                sobrantes.delete()
+            else:
+                retiradas = sobrantes.exclude(estado=ObjetoInteractivo.Estado.RETIRADO).update(
+                    estado=ObjetoInteractivo.Estado.RETIRADO
+                )
+                if retiradas:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"'{nombre_escena}': {retiradas} objeto(s) ya no están en el seed -- "
+                            f"marcados como 'retirado' (no borrados, para no perder el progreso "
+                            f"de los usuarios). Usa --purgar si de verdad quieres borrarlos."
+                        )
+                    )
+
+            for i, (palabra, glosa_es, sprite_key) in enumerate(objetos):
                 fila, columna = divmod(i, _GRID_COLS)
                 # update_or_create (no get_or_create): sprite_key y otros campos
                 # placeholder siguen ajustándose mientras se coordina con el
@@ -71,10 +138,16 @@ class Command(BaseCommand):
                     palabra=palabra,
                     defaults={
                         "lengua": lengua,
-                        # Por ahora glosa_es == palabra: ambos son el mismo placeholder en
-                        # español. Cuando llegue el vocabulario totonaco real, `palabra` se
-                        # reemplaza por la palabra real y `glosa_es` conserva esta glosa.
-                        "glosa_es": palabra,
+                        # glosa_es YA NO es igual a palabra. `palabra` es el slug
+                        # sin acentos -- clave, nombre del audio, y lo que el alumno
+                        # teclea con el teclado totonaco, que no tiene vocales
+                        # acentuadas. `glosa_es` es la etiqueta que se muestra, con
+                        # su ortografía real, y es por la que el frontend empareja
+                        # cada punto con su objeto (resolveHotspot). Mientras los dos
+                        # fueron el mismo slug, "sofá" y "mesa de centro" no
+                        # emparejaban con nada: 8 de los 36 objetos sembrados eran
+                        # invisibles para el recorrido sin que nada lo avisara.
+                        "glosa_es": glosa_es,
                         "sprite_key": sprite_key,
                         "audio_ogg": _url_audio_placeholder(palabra, "ogg"),
                         "audio_m4a": _url_audio_placeholder(palabra, "m4a"),

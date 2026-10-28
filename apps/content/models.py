@@ -32,6 +32,14 @@ class ObjetoInteractivo(models.Model):
         BORRADOR = "borrador", "Borrador"
         EN_REVISION = "en_revision", "En revisión"
         PUBLICADO = "publicado", "Publicado"
+        # Estuvo publicado y salió del temario (p. ej. la poda del Baño de
+        # octubre 2026, ver apps/content/seed_data.py). No es BORRADOR: eso
+        # significa "todavía no está listo", y confundiría a un
+        # hablante-revisor en el admin. Existe para que `seed_demo` pueda
+        # sacar una palabra del recorrido SIN borrar su fila, porque
+        # ProgresoUsuario e IntentoEscritura apuntan aquí con CASCADE y
+        # borrar la fila se lleva el progreso real de los usuarios.
+        RETIRADO = "retirado", "Retirado"
 
     escena = models.ForeignKey(Escena, on_delete=models.CASCADE, related_name="objetos")
     lengua = models.ForeignKey(Lengua, on_delete=models.CASCADE, related_name="objetos")

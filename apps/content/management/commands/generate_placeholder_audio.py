@@ -6,7 +6,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.content.seed_data import palabras_unicas
+from apps.content.seed_data import glosa_de, palabras_unicas
 
 PLACEHOLDER_DIR = "audio/placeholder"
 VOZ = "Paulina"  # voz es-MX incluida en macOS
@@ -48,7 +48,7 @@ class Command(BaseCommand):
                 continue
 
             with tempfile.NamedTemporaryFile(suffix=".aiff") as fuente_tts:
-                subprocess.run(["say", "-v", VOZ, "-o", fuente_tts.name, palabra], check=True)
+                subprocess.run(["say", "-v", VOZ, "-o", fuente_tts.name, glosa_de(palabra)], check=True)
                 subprocess.run(
                     ["ffmpeg", "-y", "-i", fuente_tts.name, "-c:a", "libopus", "-b:a", "48k", str(destino_ogg)],
                     check=True,

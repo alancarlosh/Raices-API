@@ -22,7 +22,7 @@ class ObjetoInteractivoAdmin(admin.ModelAdmin):
     list_display = ("palabra", "glosa_es", "escena", "lengua", "estado")
     list_filter = ("estado", "lengua", "escena")
     search_fields = ("palabra", "glosa_es")
-    actions = ["marcar_publicado", "marcar_en_revision"]
+    actions = ["marcar_publicado", "marcar_en_revision", "marcar_retirado"]
 
     @admin.action(description="Marcar como publicado")
     def marcar_publicado(self, request, queryset):
@@ -31,3 +31,7 @@ class ObjetoInteractivoAdmin(admin.ModelAdmin):
     @admin.action(description="Marcar como en revisión")
     def marcar_en_revision(self, request, queryset):
         queryset.update(estado=ObjetoInteractivo.Estado.EN_REVISION)
+
+    @admin.action(description="Marcar como retirado (sale del recorrido, conserva el progreso)")
+    def marcar_retirado(self, request, queryset):
+        queryset.update(estado=ObjetoInteractivo.Estado.RETIRADO)
