@@ -27,15 +27,18 @@ from apps.content.seed_data import ESCENAS_SEED, conteos, glosa_de, palabras_uni
 # esta semilla con el archivo de vocabulario. Y no confundas estas cifras
 # con el tamaño del catálogo: `filas` y `palabras_unicas` son del sistema,
 # el catálogo son los términos con fuente documentada, que son menos.
-# 2026-10-30: bajan de 102/95/98 al salir "computadora" del temario (ver la
-# nota en seed_data.py). Actualizado a conciencia porque el tripwire falló,
-# que es para lo que está. De paso cazó los dos audios de fixture que se
-# quedaban huérfanos (ver test_load_placeholder_audio_fixtures).
+# 2026-10-30, dos cambios el mismo día, cada uno avisado por el tripwire:
+#   - sale "computadora" del Estudio: 102 filas -> 101, 95 palabras -> 94,
+#     98 sprite_keys -> 97 (ver la nota en seed_data.py). De paso el tripwire
+#     de los fixtures cazó sus dos audios huérfanos.
+#   - la silla del Estudio pasa de "office_chair_a" a "chair_a", el mismo
+#     sprite que el comedor: 97 sprite_keys -> 96. Las filas y las palabras no
+#     cambian, porque solo cambió a qué sprite apunta una fila que ya existía.
 CONTEOS_DOCUMENTADOS = {
     "escenas": 8,
     "filas": 101,
     "palabras_unicas": 94,
-    "sprite_keys_unicas": 97,
+    "sprite_keys_unicas": 96,
 }
 
 

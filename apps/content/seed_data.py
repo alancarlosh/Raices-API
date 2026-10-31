@@ -54,11 +54,17 @@ diferencia del caso de "ropero" que sigue pendiente. Los otros 5
 no tiene sprite en el kit (no trae electrónica de oficina como impresoras o
 archiveros) — se reemplazó por una segunda "planta" con sprite_key distinto
 ("plant_small_a", una planta de escritorio pequeña) en vez de la "planta" de
-piso de Sala ("plant_a"). Igual patrón para "silla": reutiliza la palabra de
-Cocina pero con sprite_key distinto ("office_chair_a", silla de oficina con
-ruedas, vs. "chair_a" la silla de comedor). "librero" y "lampara" sí
-reutilizan exactamente el mismo sprite_key ya usado en Sala/Recámara
-(bookshelf_a, lamp_table_a) porque son el mismo objeto visual.
+piso de Sala ("plant_a"). "librero" y "lampara" sí reutilizan exactamente el
+mismo sprite_key ya usado en Sala/Recámara (bookshelf_a, lamp_table_a)
+porque son el mismo objeto visual.
+
+La "silla" del Estudio también llevaba sprite_key propio por esa misma
+lógica ("office_chair_a", de oficina con ruedas, frente a "chair_a" la del
+comedor), pero eso dejó de ser cierto el 2026-10-30: ahora usa "chair_a"
+igual que el comedor (ver la nota en la propia fila). Se deja escrito aquí
+porque esta sección explicaba el criterio contrario y una prosa que
+describe el estado presente tiene que corregirse cuando el estado cambia,
+no quedarse como registro de lo que ya no es.
 
 
 --- AMPLIACION 2026-10: de 36 objetos a los que hay hoy, y `glosa_es` deja
@@ -236,7 +242,14 @@ ESCENAS_SEED = {
             # vuelve. Es la primera palabra que sale del temario desde que ese
             # mecanismo existe.
             ("librero", "librero", "bookshelf_a"),
-            ("silla", "silla", "office_chair_a"),
+            # chair_a, el mismo sprite que la silla del comedor, a proposito:
+            # era "office_chair_a" (giratoria con ruedas) y el 3D ya cambio su
+            # modelo a una de madera por la misma composicion que saco la
+            # computadora, asi que el 2D guardaba el criterio contrario. Que las
+            # dos sillas de la casa se dibujen igual es cierto -- en el 3D
+            # tambien comparten modelo -- y la razon del Sprint 14 para
+            # distinguirlas (que una era de oficina) dejo de existir.
+            ("silla", "silla", "chair_a"),
             ("lampara", "lámpara", "lamp_table_a"),
             ("planta", "planta", "plant_small_a"),
             ("maquina_coser", "máquina de coser", "maquina_coser_a"),
