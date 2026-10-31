@@ -224,7 +224,17 @@ ESCENAS_SEED = {
         "nombre": "Estudio",
         "objetos": [
             ("escritorio", "escritorio", "desk_a"),
-            ("computadora", "computadora", "computer_a"),
+            # "computadora" salio del temario el 2026-10-30 (decision de Alan).
+            # No es anacronismo documental sino composicion: la pantalla era la
+            # pieza que hacia leer el cuarto como oficina moderna en vez de como
+            # el cuarto de trabajo de una casa rural. El escritorio y la silla se
+            # quedan, con su advertencia de fuente escrita -- no estan
+            # documentados, pero tampoco contradicen a la fuente, que es la misma
+            # distincion con la que se podo el Bano (ver la nota de "bano").
+            # Su fila NO desaparece de la base: seed_demo la marca RETIRADO, asi
+            # que el progreso de quien la hubiera practicado sobrevive por si
+            # vuelve. Es la primera palabra que sale del temario desde que ese
+            # mecanismo existe.
             ("librero", "librero", "bookshelf_a"),
             ("silla", "silla", "office_chair_a"),
             ("lampara", "lámpara", "lamp_table_a"),

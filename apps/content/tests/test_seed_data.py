@@ -27,11 +27,15 @@ from apps.content.seed_data import ESCENAS_SEED, conteos, glosa_de, palabras_uni
 # esta semilla con el archivo de vocabulario. Y no confundas estas cifras
 # con el tamaño del catálogo: `filas` y `palabras_unicas` son del sistema,
 # el catálogo son los términos con fuente documentada, que son menos.
+# 2026-10-30: bajan de 102/95/98 al salir "computadora" del temario (ver la
+# nota en seed_data.py). Actualizado a conciencia porque el tripwire falló,
+# que es para lo que está. De paso cazó los dos audios de fixture que se
+# quedaban huérfanos (ver test_load_placeholder_audio_fixtures).
 CONTEOS_DOCUMENTADOS = {
     "escenas": 8,
-    "filas": 102,
-    "palabras_unicas": 95,
-    "sprite_keys_unicas": 98,
+    "filas": 101,
+    "palabras_unicas": 94,
+    "sprite_keys_unicas": 97,
 }
 
 
