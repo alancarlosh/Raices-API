@@ -132,8 +132,24 @@ ESCENAS_SEED = {
         "nombre": "Cocina",
         "objetos": [
             ("ventana", "ventana", "window_a"),
-            ("estufa", "estufa", "stove_a"),
-            ("refrigerador", "refrigerador", "fridge_a"),
+            # "estufa" y "refrigerador" salieron del temario el 2026-10-31
+            # (decision de Alan, caminando por la cocina). Mismo caso que
+            # "computadora" en el Estudio y por la misma razon: no es un
+            # anacronismo que contradiga la fuente -- las descripciones
+            # contemporaneas de Huehuetla si recogen la cocina de humo
+            # conviviendo con el equipo comprado -- es COMPOSICION. Con el
+            # fogon, el metate, el comal y el zarzo a dos metros, dos
+            # electrodomesticos blancos eran lo primero que se veia al
+            # entrar y se comian el cuarto.
+            #
+            # Sus filas NO desaparecen: seed_demo marca RETIRADO todo lo
+            # que ya no esta en esta lista, asi que el progreso de quien
+            # las hubiera practicado sobrevive por si vuelven.
+            #
+            # Hay que quitarlas AQUI y no solo en Blender: una palabra
+            # sembrada sin pieza en el mundo 3D es un puntero que nunca
+            # aparece, y anclajes.test.ts lo reporta como fallo -- de
+            # hecho fallo, y por eso se toco esto.
             ("mesa", "mesa", "table_a"),
             ("silla", "silla", "chair_a"),
             ("metate", "metate", "metate_a"),
