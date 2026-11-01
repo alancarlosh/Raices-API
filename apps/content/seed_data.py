@@ -176,7 +176,13 @@ ESCENAS_SEED = {
             ("librero", "librero", "bookshelf_a"),
             ("mesa_centro", "mesa de centro", "table_coffee_a"),
             ("lampara", "lámpara", "lamp_floor_a"),
-            ("televisor", "televisor", "tv_modern_a"),
+            # "televisor" salio del temario el 2026-10-31, el mismo dia y
+            # por la misma razon que "estufa" y "refrigerador" de Cocina:
+            # no contradice a la fuente -- una casa de Huehuetla hoy tiene
+            # television -- pero se comia el centro de una Sala que ya
+            # estaba sobrecargada. Tercera palabra que sale por
+            # COMPOSICION y no por documentacion, tras "computadora".
+            # Marcada RETIRADO por seed_demo, no borrada. Temario: 98.
             ("planta", "planta", "plant_a"),
             ("banco", "banco", "banco_a"),
             ("cortina", "cortina", "cortina_a"),
