@@ -186,7 +186,6 @@ ESCENAS_SEED = {
             ("planta", "planta", "plant_a"),
             ("banco", "banco", "banco_a"),
             ("cortina", "cortina", "cortina_a"),
-            ("escoba", "escoba", "escoba_a"),
             ("imagen_religiosa", "imagen religiosa", "imagen_religiosa_a"),
             ("repisa", "repisa", "repisa_a"),
             ("altar", "altar", "altar_a"),
@@ -237,6 +236,12 @@ ESCENAS_SEED = {
     "bano": {
         "nombre": "Baño",
         "objetos": [
+            # "escoba" VIENE DE SALA (01-11-2026, decision de Alan). Una
+            # escoba vive donde se guarda lo de asear, no en la sala de
+            # recibir. Mover la pieza 3D mueve la palabra: hay que
+            # moverla en las TRES vistas o queda sembrada en una escena
+            # y con puntero en otra.
+            ("escoba", "escoba", "escoba_a"),
             ("balde", "balde", "balde_a"),
             ("jicara", "jícara", "jicara_a"),
             ("jabon", "jabón", "jabon_a"),
