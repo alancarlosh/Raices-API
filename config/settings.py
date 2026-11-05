@@ -3,12 +3,15 @@ Django settings for the Raíces project.
 """
 
 import os
+import warnings
 from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
+
+from config import email_backend
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -195,6 +198,31 @@ EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+
+# Guarda contra el estado intermedio: SMTP encendido sin credenciales hace
+# que send_mail reviente y, como services.py lo llama con
+# fail_silently=False, "recuperar contraseña" devolvería un 500 al usuario
+# en vez de su 200 de siempre. Mejor volver a consola y avisar — ver
+# config/email_backend.py para el razonamiento completo y las pruebas.
+#
+# Se usa `warnings` y no `logging` porque esto corre al importar settings,
+# antes de que LOGGING esté configurado; en Render el aviso sale igual por
+# stderr, que es donde se leen los logs del servicio.
+EMAIL_BACKEND, _correo_incompleto = email_backend.resolver(
+    backend=EMAIL_BACKEND,
+    host_user=EMAIL_HOST_USER,
+    host_password=EMAIL_HOST_PASSWORD,
+    from_email=DEFAULT_FROM_EMAIL,
+)
+if _correo_incompleto:
+    warnings.warn(
+        "EMAIL_BACKEND pedía SMTP pero falta "
+        + ", ".join(_correo_incompleto)
+        + ". Se vuelve al backend de consola: la aplicación sigue en pie y el "
+        "enlace de recuperación se escribirá en el log del servidor en vez de "
+        "enviarse. Completa esas variables para que salgan los correos.",
+        stacklevel=2,
+    )
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
