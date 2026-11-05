@@ -38,8 +38,23 @@ services:
       #
       # EMAIL_HOST y EMAIL_PORT no se declaran: settings.py ya trae el
       # relay de Brevo (smtp-relay.brevo.com:587) por defecto.
+      # EMAIL_BACKEND VA sync:false Y NO CON VALOR FIJO, y la correccion
+      # es mia: ponerlo fijo dejaba el despliegue en un estado
+      # INTERMEDIO PEOR QUE EL ANTERIOR. Con el backend SMTP ya activo y
+      # las credenciales todavia vacias, send_mail -- que corre con
+      # fail_silently=False y sin try -- revienta, asi que "recuperar
+      # contrasena" pasaria de devolver 200 (enlace al log, invisible
+      # pero limpio) a devolver 500.
+      #
+      # Asi el interruptor y las credenciales se encienden JUNTOS: hasta
+      # que Alan escriba las cuatro en el panel, EMAIL_BACKEND no esta y
+      # settings.py mantiene su default `console`, que es el
+      # comportamiento de siempre.
+      #
+      # El valor a escribir, para no tener que buscarlo:
+      #   django.core.mail.backends.smtp.EmailBackend
       - key: EMAIL_BACKEND
-        value: django.core.mail.backends.smtp.EmailBackend
+        sync: false
       # Las credenciales SMTP de Brevo. OJO: el usuario y la clave SMTP
       # NO son el correo y la contrasena de la cuenta Brevo -- se sacan
       # de su panel, en SMTP & API. Van sync:false para que se escriban
