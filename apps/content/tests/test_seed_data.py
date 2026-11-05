@@ -27,18 +27,22 @@ from apps.content.seed_data import ESCENAS_SEED, conteos, glosa_de, palabras_uni
 # esta semilla con el archivo de vocabulario. Y no confundas estas cifras
 # con el tamaño del catálogo: `filas` y `palabras_unicas` son del sistema,
 # el catálogo son los términos con fuente documentada, que son menos.
-# 2026-10-30, dos cambios el mismo día, cada uno avisado por el tripwire:
-#   - sale "computadora" del Estudio: 102 filas -> 101, 95 palabras -> 94,
-#     98 sprite_keys -> 97 (ver la nota en seed_data.py). De paso el tripwire
-#     de los fixtures cazó sus dos audios huérfanos.
-#   - la silla del Estudio pasa de "office_chair_a" a "chair_a", el mismo
-#     sprite que el comedor: 97 sprite_keys -> 96. Las filas y las palabras no
-#     cambian, porque solo cambió a qué sprite apunta una fila que ya existía.
+# Historial de por qué estas cifras han ido bajando, que es lo que el
+# tripwire obliga a dejar escrito:
+#   - 2026-10-30: sale "computadora" del Estudio (102/95/98 -> 101/94/97) y
+#     la silla del Estudio pasa de "office_chair_a" a "chair_a", el mismo
+#     sprite que el comedor (97 -> 96 sprite_keys; filas y palabras no
+#     cambian, porque solo cambió a qué sprite apunta una fila existente).
+#   - 2026-11-04: salen "estufa" y "refrigerador" de Cocina y "televisor" de
+#     Sala (commits ed3d567 y 8faa032), por la misma composición de casa
+#     rural que sacó la computadora: 101/94/96 -> 98/91/93. "escoba" se movió
+#     de Sala a Baño (89d4a5e) y eso NO mueve ninguna cifra -- es la misma
+#     fila en otra escena.
 CONTEOS_DOCUMENTADOS = {
     "escenas": 8,
-    "filas": 101,
-    "palabras_unicas": 94,
-    "sprite_keys_unicas": 96,
+    "filas": 98,
+    "palabras_unicas": 91,
+    "sprite_keys_unicas": 93,
 }
 
 
