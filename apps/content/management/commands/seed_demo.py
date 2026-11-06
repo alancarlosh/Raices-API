@@ -19,6 +19,27 @@ _OBJ_W, _OBJ_H = 64, 64
 _ORIGIN_X, _ORIGIN_Y = 60, 60
 
 
+# Muestra de progreso para la cuenta `demo`, por si hay que enseñar la
+# pantalla de progreso tras una recuperación en frío de la base. No se siembra
+# salvo que se pida con --con-progreso: ver la nota en add_arguments.
+#
+# La forma está elegida para que SE RECONOZCA como dato de demostración si
+# alguien mira la base: pocos objetos, repartidos en tres escenas de ocho,
+# ninguna escena al 100%, y descubiertos > dominados siempre. No se parece a
+# una sesión de uso real porque no pretende parecerlo.
+#
+# (escena, cuántos descubrir, cuántos de esos dominar)
+_MUESTRA_PROGRESO = [
+    ("cocina", 4, 2),
+    ("sala", 3, 1),
+    ("huerto", 2, 1),
+]
+# Un objeto descubierto con un intento FALLIDO como último, para que la
+# pantalla muestre por qué "descubierto" y "dominado" son métricas distintas
+# y no solo dos números que casi coinciden.
+_ESCENA_INTENTO_FALLIDO = "cocina"
+
+
 def _progreso_asociado(objetos) -> tuple[int, int]:
     """Cuántas filas de progreso/escritura se llevaría por cascada borrar
     estos objetos — para poder decirlo en voz alta antes de hacerlo, en vez
@@ -49,6 +70,20 @@ class Command(BaseCommand):
     )
 
     def add_arguments(self, parser):
+        parser.add_argument(
+            "--con-progreso",
+            action="store_true",
+            help=(
+                "Siembra una muestra de progreso para la cuenta 'demo' (unos objetos "
+                "descubiertos y dominados en tres escenas). Para qué: ProgresoUsuario e "
+                "IntentoEscritura NO están en ninguna semilla, así que si la base se "
+                "recrea --y la de Render es de plan gratuito, ya caducó una vez-- la "
+                "pantalla de progreso aparece en ceros y la demo en vivo deja de "
+                "parecerse a la Figura 4.3 de la tesis. OPT-IN a propósito, y fuera del "
+                "buildCommand de render.yaml: sembrar progreso por defecto sería "
+                "falsear datos de uso en cualquier otro contexto."
+            ),
+        )
         parser.add_argument(
             "--purgar",
             action="store_true",
@@ -174,9 +209,88 @@ class Command(BaseCommand):
                 f"username='{DEMO_USERNAME}' password='{DEMO_PASSWORD}'"
             )
         )
+        if options["con_progreso"]:
+            self._sembrar_progreso(usuario)
+
         self.stdout.write(
             self.style.WARNING(
                 "Las palabras sembradas son placeholders en español, NO traducciones "
                 "reales al totonaco — reemplazar cuando llegue el contenido validado."
+            )
+        )
+
+    def _sembrar_progreso(self, usuario):
+        """Marca unos objetos como descubiertos y dominados para `usuario`.
+
+        Pasa por los servicios reales de apps/progress en vez de crear filas a
+        mano: así un intento marcado como correcto lo es porque el texto
+        coincide de verdad con la palabra, y no por haber escrito
+        `correcto=True` en una fila que no se sostiene. Idempotente: no apila
+        intentos si ya hay progreso sembrado.
+        """
+        from apps.progress import services as progreso_services
+
+        descubiertos = dominados = fallidos = 0
+
+        for codigo, n_descubrir, n_dominar in _MUESTRA_PROGRESO:
+            objetos = list(
+                ObjetoInteractivo.objects.filter(
+                    escena__codigo=codigo, estado=ObjetoInteractivo.Estado.PUBLICADO
+                ).order_by("id")[:n_descubrir]
+            )
+            for i, objeto in enumerate(objetos):
+                progreso_services.progreso_marcar_descubierto(usuario=usuario, objeto_id=objeto.id)
+                descubiertos += 1
+
+                if IntentoEscritura.objects.filter(usuario=usuario, objeto=objeto).exists():
+                    continue  # ya sembrado: no apilar intentos al repetir
+
+                if i < n_dominar:
+                    # Correcto porque el texto coincide, no por decreto.
+                    progreso_services.intento_escritura_registrar(
+                        usuario=usuario, objeto_id=objeto.id, texto_ingresado=objeto.palabra
+                    )
+                    dominados += 1
+                elif codigo == _ESCENA_INTENTO_FALLIDO and i == n_dominar:
+                    progreso_services.intento_escritura_registrar(
+                        usuario=usuario, objeto_id=objeto.id, texto_ingresado="(muestra de demo)"
+                    )
+                    fallidos += 1
+
+        # Se informa del ESTADO RESULTANTE, no de lo que creó esta corrida.
+        # En una base recién recreada --el caso para el que existe esto-- son
+        # lo mismo, pero en una base de desarrollo con progreso acumulado de
+        # antes no lo son, y decir "9 descubiertos" cuando la cuenta tiene 26
+        # sería un informe engañoso aunque cada número fuera cierto por
+        # separado.
+        from apps.progress.selectors import progreso_resumen, progreso_total
+
+        resumen = progreso_resumen(usuario=usuario)
+        total = progreso_total(resumen_por_escena=resumen)
+        escenas_tocadas = sum(1 for e in resumen if e["objetos_descubiertos"])
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Progreso de muestra sembrado para '{usuario.username}' "
+                f"(+{descubiertos} descubierto(s), +{dominados} dominado(s), "
+                f"+{fallidos} con último intento fallido en esta corrida)."
+            )
+        )
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Estado resultante de la cuenta: {total['objetos_descubiertos']} de "
+                f"{total['total_objetos']} objeto(s) descubierto(s) "
+                f"({total['porcentaje']}%), {total['objetos_dominados']} dominado(s) "
+                f"({total['porcentaje_dominado']}%), en {escenas_tocadas} de "
+                f"{len(resumen)} escena(s)."
+            )
+        )
+        self.stdout.write(
+            self.style.WARNING(
+                "Es DATO DE DEMOSTRACIÓN, no uso medido: la muestra toca pocos objetos "
+                "en 3 de 8 escenas y ninguna al 100%. Sirve para que la pantalla de "
+                "progreso tenga algo que enseñar tras recrear la base; no para sostener "
+                "ninguna afirmación. Si el estado resultante de arriba es mayor que la "
+                "muestra, esta base ya traía progreso de antes."
             )
         )
