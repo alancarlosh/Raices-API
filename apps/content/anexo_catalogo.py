@@ -67,6 +67,30 @@ FUENTE_CORTA = {
     "xicotepec": "Reid y Bishop 1974",
     "beck": "Beck Alto Necaxa",
 }
+# El de la Sierra se cita en 1973 porque es el ano que declara el propio
+# archivo de vocabulario al listar sus fuentes ("Vocabulario Totonaco de la
+# Sierra (SIL/ILV, 1973)"), y la cita correcta es la de la edicion que se
+# consulto, no la que sea mas facil de encontrar en un catalogo. Esto se
+# cambio a 1983 y se revirtio: ver abajo.
+#
+# Lo verificado sobre la obra, con la fuente de cada dato, porque aqui ya se
+# tomo una decision equivocada por quedarse con el dato facil:
+#   * WALS registra una edicion de 1973 (ILV, Mexico D.F.). O sea que el ano
+#     del archivo SI esta respaldado -- la correccion a 1983 se justifico
+#     diciendo lo contrario, y era falso.
+#   * Existe una 2a ed. de 1983, 171 pp.
+#   * Glottolog registra un ILV 1962, v+171 pp., en la serie "Mariano Silva
+#     y Aceves" vol. 7, bajo el titulo formal "Castellano-totonaco,
+#     totonaco-castellano (Dialecto de la Sierra Norte de Puebla)". Misma
+#     serie, mismo volumen y mismas paginas que la ficha de 1983, asi que
+#     parece la misma obra con su titulo largo, no otra distinta.
+#   * Lo que NO esta claro es si 1973 es edicion propia o reimpresion.
+#
+# PENDIENTE, y no lo puede cerrar nadie sin el PDF: el catalogo salio de un
+# escaneo con OCR y esa portada trae un ano impreso. Si dice otra cosa, hay
+# que tocar biblio.bib, las filas de anexos.tex y esta tabla. Importa de
+# verdad el dia que la tesis cite paginas: la paginacion cambia entre
+# ediciones.
 LOS_TRES = ["Aschmann Papantla 1973", "Aschmann Sierra 1973", "Reid y Bishop 1974"]
 
 # El archivo titula algunos escenarios con nombre largo.
