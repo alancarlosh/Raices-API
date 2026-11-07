@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "apps.languages",
     "apps.content",
     "apps.progress",
+    "apps.telemetria",
 ]
 
 MIDDLEWARE = [
@@ -173,6 +174,14 @@ REST_FRAMEWORK = {
         # envío de correo real, así que el abuso aquí es más costoso
         # (spam a la bandeja de alguien) que solo intentos fallidos.
         "password_reset": "5/min",
+        # Telemetría de rendimiento. Generoso a propósito: el cliente manda
+        # UNA medida por escena y por carga de página, así que un alumno
+        # recorriendo las ocho escenas y recargando un par de veces cabe de
+        # sobra. El tope está contra un bucle mal escrito en el front, no
+        # contra un atacante — el endpoint ya exige sesión. Y conviene que
+        # exista: la base de Render es de plan gratuito y un bucle podría
+        # llenarla en una tarde de clase.
+        "rendimiento": "60/hour",
     },
 }
 
