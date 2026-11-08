@@ -24,7 +24,7 @@ class MedicionRendimientoSerializer(serializers.ModelSerializer):
         fields = [
             "id", "escena", "fps_p50", "fps_p5", "fps_min", "muestras",
             "dpr", "pixeles", "mallas", "gpu", "navegador", "nucleos",
-            "memoria_gb", "creado_en",
+            "memoria_gb", "ajustes", "version", "creado_en",
         ]
         read_only_fields = ["id", "creado_en"]
 

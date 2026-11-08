@@ -106,3 +106,37 @@ def test_resumen_pone_lo_peor_arriba(db):
     assert filas[0]["gpu"] == "lenta", "la tabla tiene que abrir por lo que sufre"
     assert filas[0]["p5_medio"] == 12.0
     assert filas[0]["peor"] == 9
+
+
+def test_guarda_con_que_ajustes_y_version_se_midio(cliente):
+    """Lo que separa un "antes" de un "después".
+
+    Sin estos dos campos, dos filas tomadas a propósito con ajustes
+    distintos llegan al admin idénticas y compararlas es inventar.
+    """
+    r = cliente.post(
+        reverse("rendimiento-crear"),
+        medida(ajustes="sombras=no;dpr=fijo", version="e890c4f"),
+        format="json",
+    )
+    assert r.status_code == 201, r.data
+    m = MedicionRendimiento.objects.get()
+    assert m.ajustes == "sombras=no;dpr=fijo"
+    assert m.version == "e890c4f"
+
+
+def test_una_fila_sin_ajustes_ni_version_sigue_entrando(cliente):
+    """COMPATIBILIDAD, y no es teórica.
+
+    Cuando esto se despliegue habrá alumnos con el bundle ANTERIOR ya
+    cargado en el teléfono, que manda la fila sin estos campos. Si el
+    serializador los exigiera, esas medidas se perderían en silencio
+    (el cliente no reintenta) y justo son las del "antes" que queremos
+    comparar.
+    """
+    datos = medida()
+    assert "ajustes" not in datos and "version" not in datos
+    r = cliente.post(reverse("rendimiento-crear"), datos, format="json")
+    assert r.status_code == 201, r.data
+    m = MedicionRendimiento.objects.get()
+    assert m.ajustes == "" and m.version == ""

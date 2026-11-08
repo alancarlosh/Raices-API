@@ -67,6 +67,26 @@ class MedicionRendimiento(models.Model):
     nucleos = models.PositiveSmallIntegerField(null=True, blank=True)
     memoria_gb = models.FloatField(null=True, blank=True)
 
+    # CON QUÉ AJUSTES SE MIDIÓ, en formato `clave=valor;clave=valor`
+    # (p. ej. `sombras=no;dpr=fijo`).
+    #
+    # POR QUÉ SE AÑADIÓ (2026-11-08). La tabla guardaba el dpr efectivo
+    # pero no si las sombras estaban encendidas, así que dos mediciones
+    # tomadas A PROPÓSITO con ajustes distintos — que es justo lo que se
+    # hace para decidir qué optimizar — llegaban aquí con el mismo
+    # aspecto. Compararlas habría sido inventar. Texto libre y no un
+    # conjunto de columnas porque los mandos van a cambiar durante la
+    # sesión de rendimiento y no quiero una migración por cada uno.
+    ajustes = models.CharField(max_length=120, blank=True)
+
+    # SHA corto del bundle que tomó la medida, inyectado al compilar.
+    #
+    # Es lo que separa el "antes" del "después" de un despliegue. La hora
+    # de creación NO sirve para eso: un alumno puede tener abierta desde
+    # ayer una pestaña con el bundle viejo y mandar una fila hoy.
+    # Puede venir vacío (`sin-git`, o filas anteriores a este campo).
+    version = models.CharField(max_length=40, blank=True)
+
     creado_en = models.DateTimeField(auto_now_add=True)
 
     class Meta:
