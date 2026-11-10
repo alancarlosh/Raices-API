@@ -75,3 +75,48 @@ def test_progreso_marcar_descubierto_es_idempotente():
     services.progreso_marcar_descubierto(usuario=usuario, objeto_id=objeto.id)
 
     assert ProgresoUsuario.objects.filter(usuario=usuario, objeto=objeto).count() == 1
+
+
+@pytest.mark.parametrize(
+    "grafia_fuente, nombre",
+    [
+        ("a'a", "apóstrofo ASCII U+0027"),
+        ("a’a", "comilla tipográfica U+2019"),
+        ("aʼa", "letra apóstrofo modificadora U+02BC"),
+        ("aꞌa", "saltillo U+A78C, el que emite el teclado"),
+    ],
+)
+def test_las_tres_grafias_del_saltillo_son_la_misma_letra(grafia_fuente, nombre):
+    """El alumno no puede fallar por con qué BYTE se escribió la glotal.
+
+    Las fuentes del proyecto no coinciden entre sí: el teclado emite
+    U+A78C, los diccionarios de Aschmann usan apóstrofo ASCII y el PDF de
+    la norma del INALI sale maquetado con U+2019. Los tres se dibujan casi
+    igual en pantalla, así que un fallo por esto sería invisible tanto
+    para el alumno como para quien revise.
+
+    Esto NO relaja la comparación: el saltillo sigue siendo obligatorio
+    (lo prueba test_intento_escritura_es_sensible_al_saltillo) y no se
+    quitan diacríticos. Solo se unifica la forma de la misma letra.
+    """
+    objeto = ObjetoInteractivoFactory(palabra=grafia_fuente)
+    usuario = UsuarioFactory()
+
+    # El usuario escribe SIEMPRE con la tecla del proyecto (U+A78C).
+    intento = services.intento_escritura_registrar(
+        usuario=usuario, objeto_id=objeto.id, texto_ingresado="aꞌa"
+    )
+
+    assert intento.correcto is True, f"falló contra {nombre}"
+
+
+def test_el_saltillo_sigue_sin_poder_omitirse():
+    """Guardia de la guardia: unificar grafías no debe volver laxa la
+    comparación. Si esto se rompiera, "aa" pasaría como "aꞌa" y el
+    ejercicio dejaría de enseñar la glotal, que es justo lo difícil."""
+    objeto = ObjetoInteractivoFactory(palabra="a'a")
+    usuario = UsuarioFactory()
+    intento = services.intento_escritura_registrar(
+        usuario=usuario, objeto_id=objeto.id, texto_ingresado="aa"
+    )
+    assert intento.correcto is False
