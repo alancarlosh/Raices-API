@@ -11,3 +11,9 @@ db.sqlite3.bak*
 .pytest_cache/
 staticfiles/
 media/
+
+# Respaldos de la base (ver apps/accounts/management/commands/respaldar.py).
+# Llevan correos y hashes de contrasena de alumnos reales: no entran al
+# repositorio ni por accidente.
+respaldo_raices*.json
+respaldo_*.json
