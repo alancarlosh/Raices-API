@@ -26,6 +26,32 @@ class RealIpScopedRateThrottle(ScopedRateThrottle):
         return request.META.get("REMOTE_ADDR")
 
 
+class RealIpSostenidoScopedRateThrottle(RealIpScopedRateThrottle):
+    """El MISMO límite por IP real, pero en una ventana larga.
+
+    POR QUÉ DOS VENTANAS Y NO UNA MÁS ALTA. Un salón entero entra a la
+    vez: 60+ alumnos registrándose desde la MISMA IP pública de la
+    escuela en el mismo minuto. Con un solo tope de 10/min, del undécimo
+    en adelante recibía 429 — o sea que la prueba de campo se bloqueaba
+    sola. Pero subir ese minuto a 90 y dejarlo ahí abriría la puerta a
+    129.600 intentos al día desde una sola IP.
+
+    Así que el tope por minuto cubre la RÁFAGA (un grupo entrando junto)
+    y este otro, por hora, acota el ABUSO SOSTENIDO, que es un patrón que
+    ningún salón produce.
+
+    Lo que NO cambia es `token_obtain_por_cuenta` (5/min): ese es el que
+    de verdad frena la fuerza bruta contra una cuenta concreta, sin
+    importar desde cuántas IPs venga, y subir los de IP no lo toca.
+
+    Usa su propio `scope_attr` por la misma razón que
+    PorCuentaScopedRateThrottle: si leyera `throttle_scope` compartiría
+    tasa con el de la ráfaga en vez de limitar lo suyo.
+    """
+
+    scope_attr = "throttle_scope_sostenido"
+
+
 class PorCuentaScopedRateThrottle(ScopedRateThrottle):
     """ScopedRateThrottle que limita por CUENTA objetivo (el `username` del
     body), no por IP.

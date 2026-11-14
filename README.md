@@ -160,12 +160,22 @@ palabra en varias lenguas originarias. Ver `apps/progress/services.py`.
   mínima, no común, no solo numérica). Responde `201` con `{"user": {...},
   "access": "...", "refresh": "..."}` — mismo shape de tokens que
   `POST /api/token/`, así que el frontend puede dejar al usuario autenticado
-  de una vez sin una segunda llamada a login. Limitado a 10 intentos/min por
-  IP (`ScopedRateThrottle`, scope `"registro"`) — responde `429` si se excede.
+  de una vez sin una segunda llamada a login. Limitado por IP en **dos
+  ventanas**: 90/min (scope `"registro"`) para la ráfaga y 600/hora (scope
+  `"registro_sostenido"`) contra el abuso sostenido — responde `429` si se
+  excede. Los 90/min no son un redondeo: la prueba de campo son varios
+  grupos de 60+ alumnos que se registran a la vez desde la única IP
+  pública de la escuela, y con los 10/min que había antes, del undécimo en
+  adelante recibía `429`.
 - `POST /api/token/` / `POST /api/token/refresh/` — JWT (login normal para
-  usuarios ya registrados). `POST /api/token/` limitado a 10 intentos/min por
-  IP (scope `"token_obtain"`) contra fuerza bruta de contraseñas; `refresh`
-  no tiene límite propio. Nota: el límite es por worker de gunicorn
+  usuarios ya registrados). `POST /api/token/` limitado por IP en dos
+  ventanas, 90/min (scope `"token_obtain"`) y 900/hora (scope
+  `"token_obtain_sostenido"`), **más** 5/min por cuenta objetivo (scope
+  `"token_obtain_por_cuenta"`, ver `apps/accounts/throttling.py`). Ese
+  último es el que frena la fuerza bruta de verdad —limita los intentos
+  contra un username concreto sin importar desde cuántas IPs vengan— así
+  que los topes por IP pueden ser holgados para que quepa un salón sin
+  debilitarlo. `refresh` no tiene límite propio. Nota: el límite es por worker de gunicorn
   (`LocMemCache` no es compartido entre procesos) — suficiente con el worker
   único por defecto de Render free tier, no escala tal cual a varios workers
   sin pasar a un caché compartido (Redis).

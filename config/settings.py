@@ -161,9 +161,31 @@ REST_FRAMEWORK = {
     # gunicorn, no global — suficiente para un solo worker (el caso actual en
     # Render free tier), no para escalar a varios sin un caché compartido
     # (Redis) más adelante.
+    # DOS VENTANAS POR IP: la del minuto cubre la RAFAGA de un salon
+    # entrando junto; la de la hora acota el abuso sostenido. Ver
+    # RealIpSostenidoScopedRateThrottle en apps/accounts/throttling.py.
+    #
+    # EL NUMERO SALE DE UN CASO REAL, no de un redondeo: la prueba de
+    # campo son varios grupos de 60+ alumnos que se REGISTRAN ahi mismo,
+    # todos desde la unica IP publica de la escuela. Con los 10/min que
+    # habia antes, del undecimo en adelante recibia 429 -- o sea que la
+    # prueba se bloqueaba sola, y el sintoma que habria visto Alan es
+    # "a mis alumnos no les deja entrar", sin nada en el front que lo
+    # explicara.
+    #
+    # Lo que NO se toca es token_obtain_por_cuenta: ese es el que frena
+    # la fuerza bruta de verdad y subir los de IP no lo debilita.
     "DEFAULT_THROTTLE_RATES": {
-        "registro": "10/min",
-        "token_obtain": "10/min",
+        "registro": "90/min",
+        # 600/hora: cuatro grupos de 60 en una manana caben de sobra, y
+        # deja un tope a la creacion de cuentas basura, que ademas
+        # ensuciaria una base de datos que esta en el plan gratuito.
+        "registro_sostenido": "600/hour",
+        "token_obtain": "90/min",
+        # Mas holgado que el de registro porque entrar se repite y
+        # registrarse no: un alumno que recarga, se le caduca el token o
+        # vuelve al dia siguiente pide otro.
+        "token_obtain_sostenido": "900/hour",
         # Por cuenta objetivo (PorCuentaScopedRateThrottle, ver
         # apps/accounts/throttling.py), no por IP — más estricto que
         # token_obtain porque su propósito específico es frenar fuerza

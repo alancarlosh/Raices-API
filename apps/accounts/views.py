@@ -11,7 +11,11 @@ from .serializers import (
     SolicitarResetPasswordSerializer,
     UsuarioSerializer,
 )
-from .throttling import PorCuentaScopedRateThrottle, RealIpScopedRateThrottle
+from .throttling import (
+    PorCuentaScopedRateThrottle,
+    RealIpScopedRateThrottle,
+    RealIpSostenidoScopedRateThrottle,
+)
 
 
 class MeView(APIView):
@@ -38,8 +42,13 @@ class TokenObtainPairThrottledView(TokenObtainPairView):
     contra un solo username sin tope real.
     """
 
-    throttle_classes = [RealIpScopedRateThrottle, PorCuentaScopedRateThrottle]
+    throttle_classes = [
+        RealIpScopedRateThrottle,
+        RealIpSostenidoScopedRateThrottle,
+        PorCuentaScopedRateThrottle,
+    ]
     throttle_scope = "token_obtain"
+    throttle_scope_sostenido = "token_obtain_sostenido"
     throttle_scope_por_cuenta = "token_obtain_por_cuenta"
 
 
@@ -52,8 +61,9 @@ class RegistroView(APIView):
     """
 
     permission_classes = [AllowAny]
-    throttle_classes = [RealIpScopedRateThrottle]
+    throttle_classes = [RealIpScopedRateThrottle, RealIpSostenidoScopedRateThrottle]
     throttle_scope = "registro"
+    throttle_scope_sostenido = "registro_sostenido"
 
     def post(self, request):
         entrada = RegistroSerializer(data=request.data)

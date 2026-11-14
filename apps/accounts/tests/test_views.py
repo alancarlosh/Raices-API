@@ -1,15 +1,53 @@
+from unittest import mock
+
 import pytest
+from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
 from django.core.cache import cache
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from rest_framework.test import APIClient
+from rest_framework.throttling import SimpleRateThrottle
 
 from apps.accounts.models import Usuario
 from apps.accounts.tests.factories import UsuarioFactory
 
 pytestmark = pytest.mark.django_db
+
+
+def con_topes(**tasas):
+    """Fija las tasas de throttle SOLO para una prueba.
+
+    Antes cada prueba repetia a mano el numero de produccion (un bucle de
+    `range(10)` porque la tasa era 10/min), asi que cambiar la tasa rompia
+    pruebas que no tenian nada que ver con lo que habia cambiado -- y
+    peor: invitaba a ajustar el bucle en vez de pensar si el cambio
+    estaba bien. Lo que estas pruebas comprueban es EL MECANISMO: que al
+    pasarse del tope llega un 429. El numero lo pone la prueba.
+
+    NO SIRVE `override_settings(REST_FRAMEWORK=...)`, y vale la pena
+    saber por que: DRF liga las tasas a un ATRIBUTO DE CLASE en el
+    momento de importar el modulo --
+
+        class SimpleRateThrottle(BaseThrottle):
+            THROTTLE_RATES = api_settings.DEFAULT_THROTTLE_RATES
+
+    -- asi que cuando `override_settings` hace que `api_settings` se
+    recargue, lo que obtiene es un dict NUEVO, y la clase sigue apuntando
+    al viejo. Comprobado: con el override puesto, las cuatro pruebas
+    devolvian 401 en vez de 429, o sea que el tope no se movia. Se
+    parchea el atributo de la clase, que es lo que el throttle lee de
+    verdad.
+    """
+    tope = {**settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"], **tasas}
+    return mock.patch.object(SimpleRateThrottle, "THROTTLE_RATES", tope)
+
+
+def por_minuto(scope):
+    """Los intentos por minuto que concede un scope, segun la config real."""
+    cantidad, periodo = settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"][scope].split("/")
+    return int(cantidad) * {"min": 1, "hour": 1 / 60, "day": 1 / 1440}[periodo]
 
 
 def test_registro_crea_usuario_y_devuelve_tokens():
@@ -109,11 +147,12 @@ def test_usuario_registrado_puede_hacer_login_normal_despues():
     assert "access" in respuesta.data
 
 
+@con_topes(registro="3/min")
 def test_registro_limita_intentos_por_minuto():
     cache.clear()
     client = APIClient()
 
-    for i in range(10):
+    for i in range(3):
         respuesta = client.post(
             "/api/registro/",
             {"username": f"limite_registro_{i}", "email": f"limite_registro_{i}@example.com", "password": "ContraseñaSegura123"},
@@ -129,14 +168,15 @@ def test_registro_limita_intentos_por_minuto():
     assert respuesta.status_code == 429
 
 
+@con_topes(token_obtain="3/min")
 def test_token_obtain_limita_intentos_por_ip():
     # Usa un username distinto en cada intento para que el throttle POR
-    # CUENTA (más estricto, 5/min) nunca se dispare — así se aísla el límite
-    # por IP (10/min) del test de más abajo.
+    # CUENTA nunca se dispare — así se aísla el límite por IP del test de
+    # más abajo.
     cache.clear()
     client = APIClient()
 
-    for i in range(10):
+    for i in range(3):
         UsuarioFactory(username=f"limite_login_ip_{i}")
         respuesta = client.post(
             "/api/token/",
@@ -154,6 +194,7 @@ def test_token_obtain_limita_intentos_por_ip():
     assert respuesta.status_code == 429
 
 
+@con_topes(token_obtain_por_cuenta="3/min")
 def test_token_obtain_limita_intentos_por_cuenta_aunque_la_ip_cambie():
     # Un atacante con muchas IPs distintas no debería tener tope infinito
     # contra UNA sola cuenta — cada intento aquí viene de una IP (X-Forwarded-
@@ -163,7 +204,7 @@ def test_token_obtain_limita_intentos_por_cuenta_aunque_la_ip_cambie():
     UsuarioFactory(username="limite_login_cuenta")
     client = APIClient()
 
-    for i in range(5):
+    for i in range(3):
         respuesta = client.post(
             "/api/token/",
             {"username": "limite_login_cuenta", "password": "contraseña-incorrecta"},
@@ -179,6 +220,67 @@ def test_token_obtain_limita_intentos_por_cuenta_aunque_la_ip_cambie():
         HTTP_X_FORWARDED_FOR="203.0.113.99",
     )
     assert respuesta.status_code == 429
+
+
+@con_topes(token_obtain="90/min", token_obtain_sostenido="3/hour")
+def test_token_obtain_tiene_tambien_un_tope_por_hora():
+    """El tope del minuto cubre la ráfaga de un salón; este acota el abuso.
+
+    Se comprueba que está CONECTADO, que es lo que podría romperse sin que
+    nadie se diera cuenta: si RealIpSostenidoScopedRateThrottle se cayera
+    de la vista, o el nombre del scope dejara de coincidir, DRF no
+    protesta — ScopedRateThrottle deja pasar la petición cuando la vista
+    no declara su atributo. O sea que el límite desaparecería EN SILENCIO
+    y las demás pruebas seguirían en verde.
+
+    El tope por minuto se deja alto a propósito para que lo que detenga
+    la cuarta petición sea el de la hora y no el otro.
+    """
+    cache.clear()
+    client = APIClient()
+
+    for i in range(3):
+        UsuarioFactory(username=f"limite_hora_{i}")
+        respuesta = client.post(
+            "/api/token/",
+            {"username": f"limite_hora_{i}", "password": "contraseña-incorrecta"},
+            format="json",
+        )
+        assert respuesta.status_code == 401
+
+    UsuarioFactory(username="limite_hora_extra")
+    respuesta = client.post(
+        "/api/token/",
+        {"username": "limite_hora_extra", "password": "contraseña-incorrecta"},
+        format="json",
+    )
+    assert respuesta.status_code == 429
+
+
+def test_los_topes_por_ip_aguantan_un_salon_entero():
+    """EL REQUISITO DEL CAMPO, ESCRITO COMO PRUEBA.
+
+    Un salón entero sale por UNA sola IP pública: la de la escuela. La
+    prueba de campo son varios grupos de 60+ alumnos que se registran y
+    entran ahí mismo, así que un tope por IP por debajo de eso bloquea la
+    prueba — y el síntoma, visto desde el salón, es "no les deja entrar",
+    sin nada que apunte a la causa.
+
+    Esto no mide código: fija el requisito para que bajar los topes sin
+    querer (o "por seguridad", que es la tentación) falle aquí y no
+    delante de un grupo.
+
+    El de fuerza bruta de verdad es token_obtain_por_cuenta, y ese sigue
+    estricto: cinco intentos por minuto contra una cuenta concreta, sin
+    importar desde cuántas IPs vengan.
+    """
+    assert por_minuto("registro") >= 60
+    assert por_minuto("token_obtain") >= 60
+    # Y el sostenido tiene que dar para varios grupos en una mañana.
+    assert por_minuto("registro_sostenido") * 60 >= 240
+    assert por_minuto("token_obtain_sostenido") * 60 >= 240
+    # Lo que NO debe relajarse al hacer sitio para el salón.
+    assert por_minuto("token_obtain_por_cuenta") <= 5
 
 
 def test_me_devuelve_datos_del_usuario_autenticado():
