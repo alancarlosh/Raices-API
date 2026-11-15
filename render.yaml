@@ -2,6 +2,13 @@ services:
   - type: web
     name: raices-api
     env: python
+    # EL CUELLO DE LA PRUEBA DE CAMPO ES ESTA LINEA. Con `free` son 0,1 de
+    # CPU, y como el coste de un acceso es casi todo hashear la contrasena,
+    # el techo medido son ~50 accesos por minuto: sesenta alumnos de golpe
+    # hacen una cola de mas de un minuto. `0.5c-512mb` (Starter) son cinco
+    # veces la CPU por la misma memoria y lo bajaria a ~13 segundos.
+    # Los numeros y lo que NO hay que tocar al cambiarlo estan en el README,
+    # seccion "Antes de una prueba de campo". Se cambia aqui o en el panel.
     plan: free
     buildCommand: >-
       pip install -r requirements.txt &&
@@ -80,4 +87,10 @@ services:
 
 databases:
   - name: raices-db
+    # CADUCA A LOS 30 DIAS DE CREADA, con 14 de gracia antes de que Render la
+    # borre, y el plan gratuito NO admite respaldos. La caida del 28-10-2026
+    # fue esto. Hay `manage.py respaldar` / `restaurar` para salvar el
+    # contenido, pero el momento del borrado no lo elige nadie: si los datos
+    # de la prueba de campo son evidencia de la tesis, conviene mirar la
+    # fecha de caducidad ANTES de agendarla. Ver el README.
     plan: free

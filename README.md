@@ -161,8 +161,52 @@ De ahí dos cosas que conviene hacer, las dos gratis:
    minuto. El throttle ya no los bloquea (90/min por IP, ver más abajo), pero
    la cola sigue existiendo.
 
-Si hace falta que sesenta entren de verdad al mismo tiempo, lo que lo resuelve
-es subir el plan de Render ese día; lo demás son paliativos.
+### Si hacen falta sesenta a la vez: subir el plan
+
+Lo de arriba es lo que se puede apretar sin gastar. Si la prueba necesita que
+sesenta entren de verdad al mismo tiempo, el único arreglo real es más CPU, y
+los números de Render son públicos:
+
+| Plan | CPU | RAM |
+|---|---|---|
+| `free` (el actual) | **0,1** | 512 MB |
+| `0.5c-512mb` (Starter) | **0,5** | 512 MB |
+| `1c-2g` (Standard) | 1 | 2 GB |
+
+Starter es cinco veces la CPU por la misma memoria. Como el coste del acceso es
+casi todo hasheo —y eso escala con la CPU— el hasheo pasaría de ~1,06 s a
+**~0,21 s**, o sea unos **280 accesos por minuto** en vez de ~50: los sesenta
+alumnos entrarían en unos trece segundos. Con Standard no hace falta pagar más:
+el cuello desaparece ya en Starter.
+
+**Dos cosas que NO hay que tocar al subir el plan**, porque medirlas primero
+cambia la respuesta:
+
+- **El número de workers no se cambia en el código.** `startCommand` es
+  `gunicorn config.wsgi:application` y gunicorn ya lee la variable de entorno
+  `WEB_CONCURRENCY` (su valor por defecto es
+  `int(os.environ.get("WEB_CONCURRENCY", 1))`), así que se ajusta desde el
+  panel de Render sin desplegar nada. Con Starter vale la pena `WEB_CONCURRENCY=2`:
+  no acelera el hasheo, pero evita que leer una escena haga cola detrás de él.
+- **La memoria no es el problema, así que no hay que subir de plan por ella.**
+  Medido en local: el master de gunicorn ocupa 19,7 MB y cada worker 46,2 MB,
+  de modo que en 512 MB caben cuatro de sobra. En el plan gratuito más workers
+  no servirían de nada: se repartirían la misma décima de núcleo.
+
+### Y la base de datos, que es el riesgo mayor
+
+Independiente del plan del servicio web, y peor: **una base Postgres gratuita de
+Render caduca 30 días después de creada** (luego 14 días de gracia y se borra),
+tiene 1 GB y **no admite respaldos**. La caída del 28-10-2026 fue exactamente
+eso.
+
+Si los datos de la prueba de campo son evidencia para la tesis —lo son— antes de
+agendarla conviene:
+
+1. Mirar en el panel **cuándo caduca** la base actual.
+2. Correr `python manage.py respaldar` antes y después de la prueba (ver
+   `restaurar` para la vuelta).
+3. Decidir si esos datos pueden vivir en algo que se borra solo.
 
 ## Estructura
 
