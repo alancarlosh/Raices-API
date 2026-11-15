@@ -206,7 +206,26 @@ agendarla conviene:
 1. Mirar en el panel **cuándo caduca** la base actual.
 2. Correr `python manage.py respaldar` antes y después de la prueba (ver
    `restaurar` para la vuelta).
-3. Decidir si esos datos pueden vivir en algo que se borra solo.
+3. **Ensayar la restauración con el archivo de verdad**, no solo confiar en la
+   prueba automática:
+
+   ```
+   ./scripts/ensayar_restauracion.sh respaldo_raices.json
+   ```
+
+   Monta una base SQLite desechable, siembra el catálogo, restaura ahí y
+   comprueba **clave por clave** que todas las filas del respaldo llegaron —
+   no por totales, porque `seed_demo` siembra una cuenta y `restaurar`
+   sobrescribe por clave primaria, así que un conteo por diferencia puede
+   cuadrar faltando filas. No toca producción ni tu `db.sqlite3`, y no imprime
+   nada personal: solo modelos, cuentas y claves.
+
+   Su límite, dicho en claro: producción es Postgres y el ensayo corre en
+   SQLite, así que comprueba el viaje de los datos pero no descarta los fallos
+   propios de Postgres (secuencias desfasadas tras escribir por PK, tipos,
+   orden de restricciones). Con un Postgres local basta apuntar `DATABASE_URL`
+   a él y volver a correrlo: el script lo acepta tal cual.
+4. Decidir si esos datos pueden vivir en algo que se borra solo.
 
 ## Estructura
 
