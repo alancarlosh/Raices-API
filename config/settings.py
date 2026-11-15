@@ -112,6 +112,24 @@ DATABASES = {
 
 AUTH_USER_MODEL = "accounts.Usuario"
 
+# EL COSTE DE HASHEAR, AJUSTADO A LA MAQUINA QUE LO PAGA. Ver
+# apps/accounts/hashers.py para el por que con los numeros medidos en
+# produccion -- resumen: ~1,8 s de cada login en el plan gratuito de
+# Render son CPU hasheando, con un solo worker sync, y la prueba de campo
+# son grupos de 60+ alumnos registrandose a la vez.
+#
+# La lista repite los demas hasheadores de Django a proposito: declarar
+# PASSWORD_HASHERS sustituye la lista entera, y sin ellos se perderia la
+# capacidad de verificar cualquier hash que no sea pbkdf2_sha256.
+PASSWORD_HASHERS = [
+    "apps.accounts.hashers.PBKDF2SeiscientosMil",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+    "django.contrib.auth.hashers.ScryptPasswordHasher",
+]
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},

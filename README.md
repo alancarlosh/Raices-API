@@ -132,6 +132,38 @@ aprovecha (ver `config/settings.py`) pero que no verifiqué con una fuente
 externa actualizada a 2026 — trátalo como una red de seguridad adicional, no
 como sustituto de fijar `ALLOWED_HOSTS` explícito en el paso 5.
 
+## Antes de una prueba de campo
+
+Un salón entero entrando a la vez no es el caso para el que está dimensionado
+el plan gratuito. Lo medido en producción, que es lo que manda:
+
+| | |
+|---|---|
+| 404 (sin hash, sin base de datos) | 0,15 s |
+| Lectura de base de datos | 0,14 s |
+| Un login o registro | ~1,1 s (eran 1,96 s antes de bajar las iteraciones) |
+| Primera petición con el servicio dormido | **34 s** |
+
+Y `startCommand` es `gunicorn config.wsgi:application` sin `--workers`, cuyo
+defecto es **un worker sync**: una petición a la vez. El techo real son unos
+55 registros por minuto, no los 90/min que permite el throttle — el cuello es
+la CPU, no el límite declarado. Más workers no ayudaría: el trabajo es CPU y
+el plan gratuito da una fracción de núcleo.
+
+De ahí dos cosas que conviene hacer, las dos gratis:
+
+1. **Despertar la API unos minutos antes**, con `./scripts/calentar.sh`. Si no,
+   esos 34 s se los come el primer alumno que entre, que además no sabe que
+   está esperando un arranque. El script explica por qué no se deja despierta
+   con un cron: el plan da 750 horas de instancia al mes y un mes tiene 720.
+2. **Que entren escalonados**, en grupos de unos diez. A ~1 s por alumno, un
+   grupo de diez tarda diez segundos; sesenta de golpe hacen cola de un
+   minuto. El throttle ya no los bloquea (90/min por IP, ver más abajo), pero
+   la cola sigue existiendo.
+
+Si hace falta que sesenta entren de verdad al mismo tiempo, lo que lo resuelve
+es subir el plan de Render ese día; lo demás son paliativos.
+
 ## Estructura
 
 Patrón **Services + Selectors** (Django Styleguide de HackSoft): `models.py` solo
