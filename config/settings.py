@@ -214,6 +214,34 @@ REST_FRAMEWORK = {
         # envío de correo real, así que el abuso aquí es más costoso
         # (spam a la bandeja de alguien) que solo intentos fallidos.
         "password_reset": "5/min",
+        # ESTE SI NECESITA SU SOSTENIDO, y no por el mismo motivo que
+        # registro/token_obtain (ahi el sostenido DA MAS margen que el de
+        # ráfaga). Aquí hace falta por lo contrario: 5/min sostenido una
+        # hora entera ya son 300 correos -- el cupo DIARIO gratis de
+        # Brevo, entero, en una sola hora y desde una sola IP. Y el envío
+        # es el ÚNICO uso de correo de toda la app (apps/accounts/
+        # services.py es el único send_mail del proyecto), así que
+        # agotar a Brevo aquí deja sin recuperar contraseña a cualquiera,
+        # no solo a quien abusó.
+        #
+        # 12/hora por IP, y el numero sale de abajo hacia arriba: es el
+        # mayor que deja a UNA SOLA IP, sosteniendolo las 24 horas del
+        # dia, por DEBAJO del cupo diario entero (12*24=288 < 300). Mas
+        # alto que eso ya permitiria a una sola IP agotar sola el cupo de
+        # todo el dia si insistiera sin parar.
+        #
+        # Y es generoso de todas formas para quien no abusa: a
+        # diferencia de iniciar sesion, pedir un restablecimiento no es
+        # algo que se repita seguido, asi que varias personas detras de
+        # la misma red (la de la escuela) pidiendo su enlace en la misma
+        # hora caben de sobra en 12.
+        #
+        # Lo que esto NO cubre: un ataque repartido entre muchas IPs
+        # distintas. Eso seguiria pudiendo agotar el cupo de Brevo entre
+        # todas; haria falta un tope GLOBAL (no por IP) para cerrarlo del
+        # todo, y no existe todavia uno asi en este proyecto para ningun
+        # endpoint.
+        "password_reset_sostenido": "12/hour",
         # Telemetría de rendimiento. Generoso a propósito: el cliente manda
         # UNA medida por escena y por carga de página, así que un alumno
         # recorriendo las ocho escenas y recargando un par de veces cabe de

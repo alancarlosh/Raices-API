@@ -23,9 +23,12 @@ def password_reset_solicitar(*, email: str) -> None:
     llama (ver SolicitarResetPasswordView) — evita que alguien use este
     endpoint para averiguar qué correos están registrados.
 
-    EMAIL_BACKEND es 'console' por defecto (ver settings.py) mientras no se
-    decida un servicio de envío real para producción — el correo se ve en
-    los logs del servidor, no llega de verdad a la bandeja del usuario.
+    EMAIL_BACKEND es 'console' por defecto (ver settings.py) hasta que
+    existan credenciales de Brevo (el proveedor elegido) como variables de
+    entorno en Render — mientras tanto el correo se ve en los logs del
+    servidor, no llega de verdad a la bandeja del usuario. Ver
+    config/email_backend.py para la guarda que evita el estado a medio
+    configurar.
     """
     usuario = Usuario.objects.filter(email=email).first()
     if usuario is None:

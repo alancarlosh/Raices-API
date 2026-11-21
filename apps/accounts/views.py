@@ -92,8 +92,14 @@ class SolicitarResetPasswordView(APIView):
     """
 
     permission_classes = [AllowAny]
-    throttle_classes = [RealIpScopedRateThrottle]
+    # CON SOSTENIDO, Y SOLO AQUI -- ConfirmarResetPasswordView (abajo) no
+    # lo lleva porque no envia correo: comparte scope "password_reset"
+    # para el tope de rafaga, pero el sostenido protege especificamente
+    # el cupo de Brevo, y confirmar no lo gasta. Ver DEFAULT_THROTTLE_
+    # RATES en settings.py para la cuenta completa.
+    throttle_classes = [RealIpScopedRateThrottle, RealIpSostenidoScopedRateThrottle]
     throttle_scope = "password_reset"
+    throttle_scope_sostenido = "password_reset_sostenido"
 
     def post(self, request):
         entrada = SolicitarResetPasswordSerializer(data=request.data)

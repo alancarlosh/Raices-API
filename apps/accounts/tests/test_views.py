@@ -12,6 +12,7 @@ from rest_framework.throttling import SimpleRateThrottle
 
 from apps.accounts.models import Usuario
 from apps.accounts.tests.factories import UsuarioFactory
+from apps.accounts.views import ConfirmarResetPasswordView, SolicitarResetPasswordView
 
 pytestmark = pytest.mark.django_db
 
@@ -373,6 +374,58 @@ def test_solicitar_reset_responde_igual_y_no_envia_correo_si_el_email_no_existe(
 
     assert respuesta.status_code == 200
     assert len(mail.outbox) == 0
+
+
+@con_topes(password_reset="90/min", password_reset_sostenido="3/hour")
+def test_solicitar_reset_tiene_tambien_un_tope_por_hora():
+    """El de ráfaga (password_reset) no basta para proteger el cupo de
+    Brevo: 5/min sostenido una hora entera ya son 300 correos, el cupo
+    DIARIO gratis completo. Esta es la misma comprobación de conectividad
+    que test_token_obtain_tiene_tambien_un_tope_por_hora -- que el scope
+    sostenido este REALMENTE atado a la vista, no solo declarado en
+    settings. Ver esa prueba para el por que de la mecánica.
+
+    El tope por minuto se deja alto a propósito para que lo que detenga
+    la cuarta petición sea el de la hora y no el otro.
+    """
+    cache.clear()
+
+    for i in range(3):
+        respuesta = APIClient().post(
+            "/api/restablecer-password/", {"email": f"intento{i}@example.com"}, format="json"
+        )
+        assert respuesta.status_code == 200
+
+    respuesta = APIClient().post(
+        "/api/restablecer-password/", {"email": "intento-extra@example.com"}, format="json"
+    )
+    assert respuesta.status_code == 429
+
+
+def test_confirmar_reset_no_lleva_el_sostenido_porque_no_manda_correo():
+    """CONFIRMADO, NO SUPUESTO: confirmar no esta en el camino que gasta
+    el cupo de Brevo (solo send_mail de todo el proyecto esta en
+    services.py, y solo lo llama password_reset_solicitar), asi que no
+    necesita el tope sostenido que si protege a SolicitarResetPasswordView.
+    Si algun dia confirmar empezara a enviar algo -- un "tu contraseña
+    cambio" por ejemplo -- esta prueba es la que habria que tocar primero."""
+    assert not hasattr(ConfirmarResetPasswordView, "throttle_scope_sostenido")
+    assert hasattr(SolicitarResetPasswordView, "throttle_scope_sostenido")
+
+
+def test_el_sostenido_de_reset_protege_el_cupo_diario_de_brevo():
+    """EL REQUISITO, ESCRITO COMO PRUEBA -- en la direccion contraria a
+    test_los_topes_por_ip_aguantan_un_salon_entero: ahi un tope bajo sin
+    querer rompe una clase; aqui un tope ALTO sin querer deja agotar a
+    Brevo.
+
+    Brevo da 300 correos gratis AL DIA. Una sola IP sosteniendo el tope
+    por hora las 24 horas no debe poder agotarlo sola -- y con margen,
+    porque un dia de clase no son 24 horas de abuso sostenido pero
+    tampoco hay que apurar el limite al milimetro.
+    """
+    agotaria_en_un_dia = por_minuto("password_reset_sostenido") * 60 * 24
+    assert agotaria_en_un_dia < 300
 
 
 def test_confirmar_reset_cambia_la_contrasena_con_token_valido():
