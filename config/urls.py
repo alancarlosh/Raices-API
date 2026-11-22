@@ -5,9 +5,11 @@ from django.views.static import serve as servir_media
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.accounts.views import TokenObtainPairThrottledView
+from config.views import salud
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/salud/", salud, name="salud"),
     path("api/token/", TokenObtainPairThrottledView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/", include("apps.accounts.urls")),
