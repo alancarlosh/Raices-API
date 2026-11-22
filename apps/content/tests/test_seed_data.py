@@ -38,9 +38,14 @@ from apps.content.seed_data import ESCENAS_SEED, conteos, glosa_de, palabras_uni
 #     rural que sacó la computadora: 101/94/96 -> 98/91/93. "escoba" se movió
 #     de Sala a Baño (89d4a5e) y eso NO mueve ninguna cifra -- es la misma
 #     fila en otra escena.
+#   - 2026-11-20: entra "lena" a Cocina (investigación de Alan sobre cuartos
+#     con piezas sin palabra): 98/91/93 -> 99/91/93. Sube `filas` y nada
+#     más, porque "lena" ya era palabra y sprite_key de Patio -- es la MISMA
+#     fila que se repite en otro cuarto, como "ventana" o "silla", no una
+#     palabra nueva. Las repeticiones entre cuartos suben de 7 a 8.
 CONTEOS_DOCUMENTADOS = {
     "escenas": 8,
-    "filas": 98,
+    "filas": 99,
     "palabras_unicas": 91,
     "sprite_keys_unicas": 93,
 }
@@ -51,11 +56,11 @@ def test_los_conteos_citados_siguen_siendo_los_reales():
 
 
 def test_filas_y_palabras_unicas_no_son_lo_mismo():
-    """Las 7 repeticiones entre cuartos son la diferencia entre "cuántas filas
+    """Las 8 repeticiones entre cuartos son la diferencia entre "cuántas filas
     tiene la base" y "cuántos términos de vocabulario hay" — la confusión que
     infló el conteo del catálogo."""
     c = conteos()
-    assert c["filas"] - c["palabras_unicas"] == 7
+    assert c["filas"] - c["palabras_unicas"] == 8
 
 
 def test_cada_slug_tiene_una_sola_glosa():

@@ -150,6 +150,19 @@ ESCENAS_SEED = {
             # sembrada sin pieza en el mundo 3D es un puntero que nunca
             # aparece, y anclajes.test.ts lo reporta como fallo -- de
             # hecho fallo, y por eso se toco esto.
+            #
+            # "LENA" SE QUEDO SOLO DEL LADO DEL 3D, y por el lado contrario
+            # del caso de arriba: aqui la pieza SI tenia sitio (build_lena
+            # en build_room_cocina.py, con el mismo comentario que explica
+            # el canje) pero nunca se sembro aqui. anclajes.test.ts no lo
+            # cazaba porque solo vigila palabra->pieza, nunca pieza->
+            # palabra (investigacion de Alan, 2026-11-20: "investiga mas
+            # objetos en cuartos que aun les falta o no tienen"). Reusa el
+            # mismo slug que ya ensena Patio (misma palabra, dos piezas en
+            # dos cuartos -- igual que "ventana"/"silla"/"mesa"/"lampara"),
+            # asi que el audio placeholder ya existia y no hizo falta
+            # generarlo de nuevo.
+            ("lena", "leña", "lena_a"),
             ("mesa", "mesa", "table_a"),
             ("silla", "silla", "chair_a"),
             ("metate", "metate", "metate_a"),
