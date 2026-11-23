@@ -80,17 +80,16 @@ services:
       # los enlaces que reciba la gente apuntarian A SU PROPIO ORDENADOR.
       - key: FRONTEND_URL
         sync: false
+      # NEON, NO LA BASE PROPIA DE RENDER (decidido 2026-11-15, aplicado
+      # 2026-11-23): la de Render caduca a los 30 dias sin aviso y sin
+      # respaldo propio (ver la nota larga que tenia el bloque `databases:`
+      # de abajo, ya quitado). Neon no tiene esa fecha de caducidad. Va
+      # sync:false -- se pega la cadena de conexion de Neon en el panel de
+      # Render, nunca aqui ni por chat.
+      #
+      # OJO AL DESPLEGAR ESTE CAMBIO: hasta que el valor real este escrito
+      # en el panel, DATABASE_URL queda vacio y el servicio no arranca.
+      # Pegar la URL de Neon ANTES de redeploy'ar con este render.yaml, no
+      # despues.
       - key: DATABASE_URL
-        fromDatabase:
-          name: raices-db
-          property: connectionString
-
-databases:
-  - name: raices-db
-    # CADUCA A LOS 30 DIAS DE CREADA, con 14 de gracia antes de que Render la
-    # borre, y el plan gratuito NO admite respaldos. La caida del 28-10-2026
-    # fue esto. Hay `manage.py respaldar` / `restaurar` para salvar el
-    # contenido, pero el momento del borrado no lo elige nadie: si los datos
-    # de la prueba de campo son evidencia de la tesis, conviene mirar la
-    # fecha de caducidad ANTES de agendarla. Ver el README.
-    plan: free
+        sync: false
