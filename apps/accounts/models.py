@@ -13,10 +13,19 @@ class Usuario(AbstractUser):
         choices=Rol.choices,
         default=Rol.APRENDIZ,
     )
-    # NO CAMBIA el login ni la unicidad del campo `email` -- eso sigue
-    # siendo `username`, sin tocar (ver USERNAME_FIELD, intacto). Esto
-    # es solo la bandera de "se confirmó que el dueño de la cuenta
-    # recibe correo en esa dirección", vía CodigoVerificacionEmail.
+    # UNIQUE A NIVEL DE BASE DE DATOS, y no solo en el serializer de
+    # registro (RegistroSerializer.validate_email). El login ahora
+    # autentica por correo (EmailBackend, ver backends.py) -- sin esta
+    # unicidad en la BASE, dos cuentas con el mismo correo dejarían
+    # ambiguo a cuál de las dos pertenece un login, y la comprobación del
+    # serializer no protege contra una fila insertada por fuera de él
+    # (el admin de Django, una migración de datos, etc.). USERNAME_FIELD
+    # sigue siendo "username", sin tocar -- esto es solo la unicidad del
+    # campo, no cuál es la identidad "de verdad" del modelo.
+    email = models.EmailField(unique=True)
+    # Bandera de "se confirmó que el dueño de la cuenta recibe correo en
+    # esa dirección", vía CodigoVerificacionEmail -- independiente de que
+    # el correo ya sea único y se use para iniciar sesión.
     email_verificado = models.BooleanField(default=False)
 
     def __str__(self):

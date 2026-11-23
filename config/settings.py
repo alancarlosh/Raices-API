@@ -112,6 +112,20 @@ DATABASES = {
 
 AUTH_USER_MODEL = "accounts.Usuario"
 
+# EmailBackend PRIMERO: authenticate() prueba cada backend en orden y se
+# queda con el primero que devuelva un usuario, así que si ModelBackend
+# fuera antes nunca se llegaría a probar el de correo. No hace falta
+# excluirse entre sí -- EmailTokenObtainPairSerializer llama a
+# authenticate(email=..., password=...) y ModelBackend.authenticate solo
+# mira sus propios kwargs (username/request), así que con un login por
+# correo simplemente no encuentra nada y pasa al siguiente. ModelBackend
+# se queda en la lista porque el admin de Django y `createsuperuser`
+# siguen pidiendo username -- quitarlo rompería esos dos.
+AUTHENTICATION_BACKENDS = [
+    "apps.accounts.backends.EmailBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
 # EL COSTE DE HASHEAR, AJUSTADO A LA MAQUINA QUE LO PAGA. Ver
 # apps/accounts/hashers.py para el por que con los numeros medidos en
 # produccion -- resumen: ~1,8 s de cada login en el plan gratuito de

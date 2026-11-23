@@ -115,6 +115,31 @@ def test_registro_rechaza_email_duplicado():
     assert respuesta.status_code == 400
 
 
+def test_registro_guarda_el_correo_en_minusculas():
+    # Necesario para que EmailBackend (email__iexact) siempre encuentre
+    # exactamente una cuenta -- ver el comentario en validate_email.
+    respuesta = APIClient().post(
+        "/api/registro/",
+        {"username": "mayusculas_al_registrar", "email": "Alguien@Example.COM", "password": "ContraseñaSegura123"},
+        format="json",
+    )
+
+    assert respuesta.status_code == 201
+    assert respuesta.data["user"]["email"] == "alguien@example.com"
+
+
+def test_registro_rechaza_email_duplicado_con_otras_mayusculas():
+    UsuarioFactory(email="repetido@example.com")
+
+    respuesta = APIClient().post(
+        "/api/registro/",
+        {"username": "alguien_mas_2", "email": "Repetido@Example.com", "password": "ContraseñaSegura123"},
+        format="json",
+    )
+
+    assert respuesta.status_code == 400
+
+
 def test_registro_rechaza_sin_email():
     respuesta = APIClient().post(
         "/api/registro/",
@@ -143,9 +168,44 @@ def test_usuario_registrado_puede_hacer_login_normal_despues():
         format="json",
     )
 
+    # Por correo, no por username -- ver EmailTokenObtainPairSerializer.
     respuesta = APIClient().post(
         "/api/token/",
-        {"username": "login_despues", "password": "ContraseñaSegura123"},
+        {"email": "login_despues@example.com", "password": "ContraseñaSegura123"},
+        format="json",
+    )
+
+    assert respuesta.status_code == 200
+    assert "access" in respuesta.data
+
+
+def test_login_rechaza_username_en_vez_de_email():
+    # El cambio es justo este: lo que antes era el login normal ahora es
+    # un body inválido. Si esto volviera a aceptar `username`, nadie se
+    # enteraría hasta que un intento de fuerza bruta se les colara por el
+    # campo que PorCuentaScopedRateThrottle ya no vigila.
+    UsuarioFactory(username="viejo_estilo")
+
+    respuesta = APIClient().post(
+        "/api/token/",
+        {"username": "viejo_estilo", "password": "defaultpassword123"},
+        format="json",
+    )
+
+    assert respuesta.status_code == 400
+    assert "email" in respuesta.data
+
+
+def test_login_por_correo_es_insensible_a_mayusculas():
+    # EmailBackend compara con __iexact a propósito: un correo no debería
+    # depender de cómo alguien lo capitalizó al teclearlo.
+    usuario = UsuarioFactory(email="Mayusculas@Example.com")
+    usuario.set_password("ContraseñaSegura123")
+    usuario.save()
+
+    respuesta = APIClient().post(
+        "/api/token/",
+        {"email": "mayusculas@example.com", "password": "ContraseñaSegura123"},
         format="json",
     )
 
@@ -176,7 +236,7 @@ def test_registro_limita_intentos_por_minuto():
 
 @con_topes(token_obtain="3/min")
 def test_token_obtain_limita_intentos_por_ip():
-    # Usa un username distinto en cada intento para que el throttle POR
+    # Usa un correo distinto en cada intento para que el throttle POR
     # CUENTA nunca se dispare — así se aísla el límite por IP del test de
     # más abajo.
     cache.clear()
@@ -186,7 +246,7 @@ def test_token_obtain_limita_intentos_por_ip():
         UsuarioFactory(username=f"limite_login_ip_{i}")
         respuesta = client.post(
             "/api/token/",
-            {"username": f"limite_login_ip_{i}", "password": "contraseña-incorrecta"},
+            {"email": f"limite_login_ip_{i}@example.com", "password": "contraseña-incorrecta"},
             format="json",
         )
         assert respuesta.status_code == 401
@@ -194,7 +254,7 @@ def test_token_obtain_limita_intentos_por_ip():
     UsuarioFactory(username="limite_login_ip_extra")
     respuesta = client.post(
         "/api/token/",
-        {"username": "limite_login_ip_extra", "password": "contraseña-incorrecta"},
+        {"email": "limite_login_ip_extra@example.com", "password": "contraseña-incorrecta"},
         format="json",
     )
     assert respuesta.status_code == 429
@@ -213,7 +273,7 @@ def test_token_obtain_limita_intentos_por_cuenta_aunque_la_ip_cambie():
     for i in range(3):
         respuesta = client.post(
             "/api/token/",
-            {"username": "limite_login_cuenta", "password": "contraseña-incorrecta"},
+            {"email": "limite_login_cuenta@example.com", "password": "contraseña-incorrecta"},
             format="json",
             HTTP_X_FORWARDED_FOR=f"203.0.113.{i}",
         )
@@ -221,7 +281,7 @@ def test_token_obtain_limita_intentos_por_cuenta_aunque_la_ip_cambie():
 
     respuesta = client.post(
         "/api/token/",
-        {"username": "limite_login_cuenta", "password": "contraseña-incorrecta"},
+        {"email": "limite_login_cuenta@example.com", "password": "contraseña-incorrecta"},
         format="json",
         HTTP_X_FORWARDED_FOR="203.0.113.99",
     )
@@ -249,7 +309,7 @@ def test_token_obtain_tiene_tambien_un_tope_por_hora():
         UsuarioFactory(username=f"limite_hora_{i}")
         respuesta = client.post(
             "/api/token/",
-            {"username": f"limite_hora_{i}", "password": "contraseña-incorrecta"},
+            {"email": f"limite_hora_{i}@example.com", "password": "contraseña-incorrecta"},
             format="json",
         )
         assert respuesta.status_code == 401
@@ -257,7 +317,7 @@ def test_token_obtain_tiene_tambien_un_tope_por_hora():
     UsuarioFactory(username="limite_hora_extra")
     respuesta = client.post(
         "/api/token/",
-        {"username": "limite_hora_extra", "password": "contraseña-incorrecta"},
+        {"email": "limite_hora_extra@example.com", "password": "contraseña-incorrecta"},
         format="json",
     )
     assert respuesta.status_code == 429
@@ -328,7 +388,7 @@ def test_token_refresh_rota_el_refresh_token():
     usuario.save()
 
     login = APIClient().post(
-        "/api/token/", {"username": "rota_refresh", "password": "ContraseñaSegura123"}, format="json"
+        "/api/token/", {"email": "rota_refresh@example.com", "password": "ContraseñaSegura123"}, format="json"
     )
     refresh_original = login.data["refresh"]
 
@@ -349,7 +409,7 @@ def test_token_refresh_invalida_el_refresh_viejo_despues_de_usarlo():
 
     login = APIClient().post(
         "/api/token/",
-        {"username": "refresh_usado_dos_veces", "password": "ContraseñaSegura123"},
+        {"email": "refresh_usado_dos_veces@example.com", "password": "ContraseñaSegura123"},
         format="json",
     )
     refresh_original = login.data["refresh"]
@@ -477,7 +537,7 @@ def test_confirmar_reset_invalida_los_tokens_emitidos_antes_del_cambio():
 
     login = APIClient().post(
         "/api/token/",
-        {"username": "con_sesion_previa", "password": "defaultpassword123"},
+        {"email": "con_sesion_previa@example.com", "password": "defaultpassword123"},
         format="json",
     )
     access_previo = login.data["access"]

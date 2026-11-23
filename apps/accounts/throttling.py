@@ -85,12 +85,12 @@ class RealIpSostenidoScopedRateThrottle(RealIpScopedRateThrottle):
 
 
 class PorCuentaScopedRateThrottle(ScopedRateThrottle):
-    """ScopedRateThrottle que limita por CUENTA objetivo (el `username` del
+    """ScopedRateThrottle que limita por CUENTA objetivo (el `email` del
     body), no por IP.
 
     RealIpScopedRateThrottle ya limita /api/token/ por IP, pero eso no
     protege una cuenta específica: alguien con muchas IPs distintas (una
-    botnet, una VPN rotativa) sigue sin tope real contra un solo username.
+    botnet, una VPN rotativa) sigue sin tope real contra un solo correo.
     Se usa JUNTO con el throttle de IP en la vista (ver
     TokenObtainPairThrottledView), no en su lugar.
 
@@ -101,7 +101,13 @@ class PorCuentaScopedRateThrottle(ScopedRateThrottle):
     robusto (cool-off configurable, señales, panel en el admin) pero es una
     dependencia más para un caso que esta clase ya cubre.
 
-    Si el body no trae `username` (o no es JSON parseable), no se aplica
+    LEE "email", NO "username" -- el login cambió a EmailTokenObtainPairSerializer
+    (ver serializers.py), así que el campo que de verdad llega en el body de
+    /api/token/ es ese. Se normaliza a minúsculas porque EmailBackend compara
+    por `email__iexact`: sin esto, "A@x.com" y "a@x.com" acumularían cada uno
+    su propio cupo contra la MISMA cuenta.
+
+    Si el body no trae `email` (o no es JSON parseable), no se aplica
     este throttle en particular — el de IP sigue cubriendo ese caso.
 
     Usa su propio `scope_attr` (en vez del `throttle_scope` heredado de
@@ -114,11 +120,11 @@ class PorCuentaScopedRateThrottle(ScopedRateThrottle):
 
     def get_cache_key(self, request, view):
         try:
-            username = request.data.get("username")
+            email = request.data.get("email")
         except Exception:
-            username = None
+            email = None
 
-        if not username:
+        if not email:
             return None
 
-        return self.cache_format % {"scope": self.scope, "ident": username}
+        return self.cache_format % {"scope": self.scope, "ident": email.lower()}

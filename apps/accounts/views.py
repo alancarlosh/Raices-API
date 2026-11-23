@@ -8,6 +8,7 @@ from . import services
 from .serializers import (
     ConfirmarResetPasswordSerializer,
     ConfirmarVerificacionEmailSerializer,
+    EmailTokenObtainPairSerializer,
     RegistroSerializer,
     SolicitarResetPasswordSerializer,
     UsuarioSerializer,
@@ -40,9 +41,15 @@ class TokenObtainPairThrottledView(TokenObtainPairView):
     Dos throttles independientes: por IP (RealIpScopedRateThrottle) Y por la
     cuenta objetivo (PorCuentaScopedRateThrottle) — sin el segundo, un
     atacante con muchas IPs distintas podría seguir intentando fuerza bruta
-    contra un solo username sin tope real.
+    contra una sola cuenta sin tope real.
+
+    LOGIN POR CORREO, NO POR USERNAME. `serializer_class` es lo único que
+    cambia respecto al de SimpleJWT -- ver EmailTokenObtainPairSerializer
+    (serializers.py) y EmailBackend (backends.py) para la autenticación de
+    verdad. El body de esta vista pide `email`, no `username`.
     """
 
+    serializer_class = EmailTokenObtainPairSerializer
     throttle_classes = [
         RealIpScopedRateThrottle,
         RealIpSostenidoScopedRateThrottle,

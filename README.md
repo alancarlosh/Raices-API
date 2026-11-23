@@ -248,8 +248,11 @@ palabra en varias lenguas originarias. Ver `apps/progress/services.py`.
 ## Endpoints
 
 - `POST /api/registro/` — registro real de usuarios (no requiere auth). Body
-  `{"username": "...", "password": "...", "email": "..."}` (`email` opcional).
-  El rol nunca se acepta como input: todo usuario nuevo entra como `aprendiz`;
+  `{"username": "...", "password": "...", "email": "..."}` — `email` es
+  obligatorio y único (tanto en el serializer como ahora a nivel de base de
+  datos, ver el modelo `Usuario`): lo necesita tanto `restablecer-password/`
+  como el login por correo de abajo. El rol nunca se acepta como input: todo
+  usuario nuevo entra como `aprendiz`;
   asignar `hablante_revisor`/`admin` es una acción manual desde el admin de
   Django. La contraseña pasa por los validadores estándar de Django (longitud
   mínima, no común, no solo numérica). Responde `201` con `{"user": {...},
@@ -263,12 +266,17 @@ palabra en varias lenguas originarias. Ver `apps/progress/services.py`.
   pública de la escuela, y con los 10/min que había antes, del undécimo en
   adelante recibía `429`.
 - `POST /api/token/` / `POST /api/token/refresh/` — JWT (login normal para
-  usuarios ya registrados). `POST /api/token/` limitado por IP en dos
+  usuarios ya registrados). Body de `POST /api/token/`:
+  `{"email": "...", "password": "..."}` — **por correo, no por username**
+  (`EmailTokenObtainPairSerializer` + `EmailBackend`, ver
+  `apps/accounts/serializers.py` y `apps/accounts/backends.py`;
+  `USERNAME_FIELD` del modelo sigue siendo `"username"`, sin tocar — esto
+  vive un nivel por encima, solo en esta vista). Limitado por IP en dos
   ventanas, 90/min (scope `"token_obtain"`) y 900/hora (scope
   `"token_obtain_sostenido"`), **más** 5/min por cuenta objetivo (scope
   `"token_obtain_por_cuenta"`, ver `apps/accounts/throttling.py`). Ese
   último es el que frena la fuerza bruta de verdad —limita los intentos
-  contra un username concreto sin importar desde cuántas IPs vengan— así
+  contra un correo concreto sin importar desde cuántas IPs vengan— así
   que los topes por IP pueden ser holgados para que quepa un salón sin
   debilitarlo. `refresh` no tiene límite propio. Nota: el límite es por worker de gunicorn
   (`LocMemCache` no es compartido entre procesos) — suficiente con el worker

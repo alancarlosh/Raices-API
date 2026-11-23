@@ -53,7 +53,7 @@ def test_sin_sesion_no_entra(db):
 
 def test_el_usuario_no_se_puede_falsificar(cliente, alumno, db):
     """El cuerpo trae `usuario`; tiene que ignorarse y mandar el del token."""
-    otro = Usuario.objects.create_user(username="otro", password="y" * 12)
+    otro = Usuario.objects.create_user(username="otro", email="otro@example.com", password="y" * 12)
     r = cliente.post(reverse("rendimiento-crear"),
                      medida(usuario=otro.pk), format="json")
     assert r.status_code == 201, r.data
@@ -87,9 +87,9 @@ def test_resumen_es_solo_para_personal(cliente):
 
 
 def test_resumen_pone_lo_peor_arriba(db):
-    jefe = Usuario.objects.create_superuser(username="jefe", password="z" * 12)
-    buena = Usuario.objects.create_user(username="buena", password="z" * 12)
-    mala = Usuario.objects.create_user(username="mala", password="z" * 12)
+    jefe = Usuario.objects.create_superuser(username="jefe", email="jefe@example.com", password="z" * 12)
+    buena = Usuario.objects.create_user(username="buena", email="buena@example.com", password="z" * 12)
+    mala = Usuario.objects.create_user(username="mala", email="mala@example.com", password="z" * 12)
     MedicionRendimiento.objects.create(
         usuario=buena, escena="casa", fps_p50=60, fps_p5=55, fps_min=50,
         muestras=40, dpr=1.25, pixeles=1_000_000, mallas=2000, gpu="rapida")
