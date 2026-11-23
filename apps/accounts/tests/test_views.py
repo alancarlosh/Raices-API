@@ -302,6 +302,20 @@ def test_me_devuelve_datos_del_usuario_autenticado():
     assert respuesta.data["rol"] == Usuario.Rol.APRENDIZ
 
 
+def test_me_expone_si_el_correo_esta_verificado():
+    # El frontend necesita este campo para decidir si enseña el boton de
+    # "verificar correo" o la marca de "ya verificado" -- si desaparece de
+    # aqui sin que nadie lo note, esa pantalla se queda sin dato para
+    # decidir que mostrar.
+    usuario = UsuarioFactory(email_verificado=False)
+    client = APIClient()
+    client.force_authenticate(user=usuario)
+
+    respuesta = client.get("/api/me/")
+
+    assert respuesta.data["email_verificado"] is False
+
+
 def test_me_requiere_autenticacion():
     respuesta = APIClient().get("/api/me/")
 
