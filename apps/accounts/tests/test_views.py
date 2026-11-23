@@ -12,7 +12,12 @@ from rest_framework.throttling import SimpleRateThrottle
 
 from apps.accounts.models import Usuario
 from apps.accounts.tests.factories import UsuarioFactory
-from apps.accounts.views import ConfirmarResetPasswordView, SolicitarResetPasswordView
+from apps.accounts.views import (
+    ConfirmarResetPasswordView,
+    ConfirmarVerificacionEmailView,
+    SolicitarResetPasswordView,
+    SolicitarVerificacionEmailView,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -376,7 +381,7 @@ def test_solicitar_reset_responde_igual_y_no_envia_correo_si_el_email_no_existe(
     assert len(mail.outbox) == 0
 
 
-@con_topes(password_reset="90/min", password_reset_sostenido="3/hour")
+@con_topes(password_reset="90/min", envio_correo_sostenido="3/hour")
 def test_solicitar_reset_tiene_tambien_un_tope_por_hora():
     """El de ráfaga (password_reset) no basta para proteger el cupo de
     Brevo: 5/min sostenido una hora entera ya son 300 correos, el cupo
@@ -404,27 +409,28 @@ def test_solicitar_reset_tiene_tambien_un_tope_por_hora():
 
 def test_confirmar_reset_no_lleva_el_sostenido_porque_no_manda_correo():
     """CONFIRMADO, NO SUPUESTO: confirmar no esta en el camino que gasta
-    el cupo de Brevo (solo send_mail de todo el proyecto esta en
-    services.py, y solo lo llama password_reset_solicitar), asi que no
-    necesita el tope sostenido que si protege a SolicitarResetPasswordView.
-    Si algun dia confirmar empezara a enviar algo -- un "tu contraseña
-    cambio" por ejemplo -- esta prueba es la que habria que tocar primero."""
+    el cupo de Brevo -- no manda nada -- asi que no necesita el tope
+    sostenido que si protege a SolicitarResetPasswordView. Si algun dia
+    confirmar empezara a enviar algo -- un "tu contraseña cambio" por
+    ejemplo -- esta prueba es la que habria que tocar primero."""
     assert not hasattr(ConfirmarResetPasswordView, "throttle_scope_sostenido")
     assert hasattr(SolicitarResetPasswordView, "throttle_scope_sostenido")
 
 
-def test_el_sostenido_de_reset_protege_el_cupo_diario_de_brevo():
+def test_el_sostenido_de_envio_de_correo_protege_el_cupo_diario_de_brevo():
     """EL REQUISITO, ESCRITO COMO PRUEBA -- en la direccion contraria a
     test_los_topes_por_ip_aguantan_un_salon_entero: ahi un tope bajo sin
     querer rompe una clase; aqui un tope ALTO sin querer deja agotar a
     Brevo.
 
     Brevo da 300 correos gratis AL DIA. Una sola IP sosteniendo el tope
-    por hora las 24 horas no debe poder agotarlo sola -- y con margen,
-    porque un dia de clase no son 24 horas de abuso sostenido pero
-    tampoco hay que apurar el limite al milimetro.
+    por hora las 24 horas -- en CUALQUIER COMBINACION de restablecer
+    contraseña y verificar correo, porque las dos comparten este mismo
+    scope -- no debe poder agotarlo sola. Con margen, porque un dia de
+    clase no son 24 horas de abuso sostenido pero tampoco hay que apurar
+    el limite al milimetro.
     """
-    agotaria_en_un_dia = por_minuto("password_reset_sostenido") * 60 * 24
+    agotaria_en_un_dia = por_minuto("envio_correo_sostenido") * 60 * 24
     assert agotaria_en_un_dia < 300
 
 
@@ -548,3 +554,196 @@ def test_restablecer_password_limita_intentos_por_minuto():
         "/api/restablecer-password/", {"email": "quien-sea@example.com"}, format="json"
     )
     assert respuesta.status_code == 429
+
+
+def _autenticado(usuario):
+    client = APIClient()
+    client.force_authenticate(user=usuario)
+    return client
+
+
+def test_solicitar_verificacion_requiere_sesion():
+    cache.clear()
+    respuesta = APIClient().post("/api/verificar-email/", {}, format="json")
+    assert respuesta.status_code == 401
+
+
+def test_solicitar_verificacion_envia_codigo_de_seis_digitos():
+    cache.clear()
+    usuario = UsuarioFactory(email="aprende@example.com")
+
+    respuesta = _autenticado(usuario).post("/api/verificar-email/", {}, format="json")
+
+    assert respuesta.status_code == 200
+    assert len(mail.outbox) == 1
+    assert mail.outbox[0].to == ["aprende@example.com"]
+    codigo = usuario.codigos_verificacion_email.get().codigo
+    assert len(codigo) == 6
+    assert codigo.isdigit()
+    assert codigo in mail.outbox[0].body
+
+
+def test_solicitar_verificacion_no_reenvia_si_ya_esta_verificado():
+    # No es solo cortesia: cada reenvio gasta un correo real del mismo
+    # cupo de Brevo que protege envio_correo_sostenido. Pedirlo de nuevo
+    # cuando ya no hace falta no deberia costar nada.
+    cache.clear()
+    usuario = UsuarioFactory(email_verificado=True)
+
+    respuesta = _autenticado(usuario).post("/api/verificar-email/", {}, format="json")
+
+    assert respuesta.status_code == 200
+    assert len(mail.outbox) == 0
+
+
+def test_solicitar_verificacion_invalida_el_codigo_anterior():
+    # Pedir un codigo nuevo no debe dejar vivo al anterior -- si alguien
+    # vio el correo viejo (un buzon compartido, un reenvio de puro accidente)
+    # no debe poder usarlo despues de que se pidio otro.
+    cache.clear()
+    usuario = UsuarioFactory()
+    _autenticado(usuario).post("/api/verificar-email/", {}, format="json")
+    viejo = usuario.codigos_verificacion_email.get().codigo
+
+    _autenticado(usuario).post("/api/verificar-email/", {}, format="json")
+
+    assert not usuario.codigos_verificacion_email.filter(codigo=viejo).exists()
+
+
+def test_confirmar_verificacion_requiere_sesion():
+    cache.clear()
+    respuesta = APIClient().post("/api/verificar-email/confirmar/", {"codigo": "123456"}, format="json")
+    assert respuesta.status_code == 401
+
+
+def test_confirmar_verificacion_con_codigo_correcto_marca_verificado():
+    cache.clear()
+    usuario = UsuarioFactory()
+    _autenticado(usuario).post("/api/verificar-email/", {}, format="json")
+    codigo = usuario.codigos_verificacion_email.get().codigo
+
+    respuesta = _autenticado(usuario).post(
+        "/api/verificar-email/confirmar/", {"codigo": codigo}, format="json"
+    )
+
+    assert respuesta.status_code == 200
+    usuario.refresh_from_db()
+    assert usuario.email_verificado is True
+
+
+def test_confirmar_verificacion_consume_el_codigo_tras_usarlo():
+    cache.clear()
+    usuario = UsuarioFactory()
+    _autenticado(usuario).post("/api/verificar-email/", {}, format="json")
+    codigo = usuario.codigos_verificacion_email.get().codigo
+    cliente = _autenticado(usuario)
+
+    primera = cliente.post("/api/verificar-email/confirmar/", {"codigo": codigo}, format="json")
+    segunda = cliente.post("/api/verificar-email/confirmar/", {"codigo": codigo}, format="json")
+
+    assert primera.status_code == 200
+    assert segunda.status_code == 400
+
+
+def test_confirmar_verificacion_con_codigo_incorrecto_no_verifica():
+    cache.clear()
+    usuario = UsuarioFactory()
+    _autenticado(usuario).post("/api/verificar-email/", {}, format="json")
+
+    respuesta = _autenticado(usuario).post(
+        "/api/verificar-email/confirmar/", {"codigo": "000000"}, format="json"
+    )
+
+    assert respuesta.status_code == 400
+    usuario.refresh_from_db()
+    assert usuario.email_verificado is False
+
+
+def test_confirmar_verificacion_con_codigo_caducado_no_verifica():
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    cache.clear()
+    usuario = UsuarioFactory()
+    _autenticado(usuario).post("/api/verificar-email/", {}, format="json")
+    codigo = usuario.codigos_verificacion_email.get()
+    # Se adelanta el reloj del propio codigo en vez de esperar de verdad
+    # 15 minutos: `creado` es auto_now_add (solo se fija al crear), asi
+    # que un update() posterior si puede moverlo.
+    usuario.codigos_verificacion_email.filter(pk=codigo.pk).update(
+        creado=timezone.now() - timedelta(minutes=16)
+    )
+
+    respuesta = _autenticado(usuario).post(
+        "/api/verificar-email/confirmar/", {"codigo": codigo.codigo}, format="json"
+    )
+
+    assert respuesta.status_code == 400
+    usuario.refresh_from_db()
+    assert usuario.email_verificado is False
+
+
+def test_confirmar_verificacion_no_distingue_un_codigo_que_no_es_del_otro(django_assert_num_queries):
+    # El codigo de UN usuario no debe servir para verificar la cuenta de
+    # OTRO, aunque alguien lo adivine o lo intercepte: confirmar siempre
+    # busca dentro de los codigos de `request.user`, nunca de la tabla
+    # entera.
+    cache.clear()
+    uno = UsuarioFactory()
+    otro = UsuarioFactory()
+    _autenticado(uno).post("/api/verificar-email/", {}, format="json")
+    codigo_de_uno = uno.codigos_verificacion_email.get().codigo
+
+    respuesta = _autenticado(otro).post(
+        "/api/verificar-email/confirmar/", {"codigo": codigo_de_uno}, format="json"
+    )
+
+    assert respuesta.status_code == 400
+    otro.refresh_from_db()
+    assert otro.email_verificado is False
+
+
+@con_topes(verificar_email="90/min", envio_correo_sostenido="3/hour")
+def test_solicitar_verificacion_tiene_tambien_un_tope_por_hora():
+    """Misma mecanica que test_solicitar_reset_tiene_tambien_un_tope_por_hora:
+    comprobar que el scope sostenido esta REALMENTE atado a esta vista."""
+    cache.clear()
+
+    for i in range(3):
+        usuario = UsuarioFactory(username=f"verificar_{i}")
+        respuesta = _autenticado(usuario).post("/api/verificar-email/", {}, format="json")
+        assert respuesta.status_code == 200
+
+    extra = UsuarioFactory(username="verificar_extra")
+    respuesta = _autenticado(extra).post("/api/verificar-email/", {}, format="json")
+    assert respuesta.status_code == 429
+
+
+@con_topes(password_reset="90/min", verificar_email="90/min", envio_correo_sostenido="3/hour")
+def test_restablecer_y_verificar_comparten_el_mismo_cupo_sostenido():
+    """EL REQUISITO DE FONDO de compartir el scope, escrito como prueba:
+    si algun dia alguien le diera a cada vista su PROPIO scope sostenido
+    -- por prolijidad, sin pensarlo -- esta prueba es la que lo cazaria.
+    Dos peticiones a restablecer-password y una a verificar-email deben
+    agotar el MISMO tope de 3/hour, no tres topes independientes."""
+    cache.clear()
+    usuario = UsuarioFactory(email="comparte@example.com")
+
+    r1 = APIClient().post(
+        "/api/restablecer-password/", {"email": "comparte@example.com"}, format="json"
+    )
+    r2 = APIClient().post(
+        "/api/restablecer-password/", {"email": "comparte@example.com"}, format="json"
+    )
+    r3 = _autenticado(usuario).post("/api/verificar-email/", {}, format="json")
+    assert [r1.status_code, r2.status_code, r3.status_code] == [200, 200, 200]
+
+    # La cuarta, sea de la vista que sea, ya se topa con el mismo scope.
+    r4 = _autenticado(usuario).post("/api/verificar-email/", {}, format="json")
+    assert r4.status_code == 429
+
+
+def test_confirmar_verificacion_no_lleva_el_sostenido_porque_no_manda_correo():
+    assert not hasattr(ConfirmarVerificacionEmailView, "throttle_scope_sostenido")
+    assert hasattr(SolicitarVerificacionEmailView, "throttle_scope_sostenido")

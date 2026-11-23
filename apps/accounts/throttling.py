@@ -25,6 +25,38 @@ class RealIpScopedRateThrottle(ScopedRateThrottle):
             return xff.split(",")[0].strip()
         return request.META.get("REMOTE_ADDR")
 
+    def get_cache_key(self, request, view):
+        """Sobreescribe el metodo ENTERO, no solo get_ident -- y hay que
+        decir por que, porque a simple vista parece redundante.
+
+        `ScopedRateThrottle.get_cache_key` (la clase de la que esta
+        hereda) NO SIEMPRE llama a `get_ident`: para una peticion
+        autenticada usa `request.user.pk` en su lugar, y solo cae a
+        `get_ident` cuando `request.user` no esta autenticado. Mientras
+        esta clase solo protegio vistas AllowAny (registro, token_obtain,
+        password_reset) eso nunca se noto -- ahi toda peticion es
+        anonima, asi que siempre caia por la rama de `get_ident`.
+
+        Se encontro al anadir SolicitarVerificacionEmailView
+        (IsAuthenticated): cuatro usuarios distintos desde la MISMA IP
+        sacaban cuatro cachekeys distintas -- `throttle_..._1`,
+        `..._2`, etc., el pk de cada uno -- y el tope por IP nunca se
+        disparaba. Medido en una prueba antes de arreglarlo: 5 peticiones
+        autenticadas con usuarios distintos, 5 claves de cache distintas.
+
+        Y esto rompia ademas la premisa de envio_correo_sostenido (ver
+        settings.py): ese scope lo comparten password_reset (anonimo,
+        por IP) y verificar_email (autenticado, por pk sin este arreglo)
+        para que una sola fuente no agote el cupo de Brevo combinando
+        las dos rutas -- pero "una sola fuente" solo significa lo mismo
+        en las dos vistas si las dos miden la IP de la misma forma.
+
+        Con el metodo completo sobreescrito, el ident es SIEMPRE la IP
+        real, autenticado o no -- consistente con el resto de esta
+        clase y con lo que su propio nombre promete.
+        """
+        return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
+
 
 class RealIpSostenidoScopedRateThrottle(RealIpScopedRateThrottle):
     """El MISMO límite por IP real, pero en una ventana larga.

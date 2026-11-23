@@ -1,6 +1,13 @@
 from django.urls import path
 
-from .views import ConfirmarResetPasswordView, MeView, RegistroView, SolicitarResetPasswordView
+from .views import (
+    ConfirmarResetPasswordView,
+    ConfirmarVerificacionEmailView,
+    MeView,
+    RegistroView,
+    SolicitarResetPasswordView,
+    SolicitarVerificacionEmailView,
+)
 
 urlpatterns = [
     path("registro/", RegistroView.as_view(), name="registro"),
@@ -10,5 +17,11 @@ urlpatterns = [
         "restablecer-password/confirmar/",
         ConfirmarResetPasswordView.as_view(),
         name="restablecer-password-confirmar",
+    ),
+    path("verificar-email/", SolicitarVerificacionEmailView.as_view(), name="verificar-email"),
+    path(
+        "verificar-email/confirmar/",
+        ConfirmarVerificacionEmailView.as_view(),
+        name="verificar-email-confirmar",
     ),
 ]

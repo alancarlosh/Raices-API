@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from . import services
 from .serializers import (
     ConfirmarResetPasswordSerializer,
+    ConfirmarVerificacionEmailSerializer,
     RegistroSerializer,
     SolicitarResetPasswordSerializer,
     UsuarioSerializer,
@@ -97,9 +98,14 @@ class SolicitarResetPasswordView(APIView):
     # para el tope de rafaga, pero el sostenido protege especificamente
     # el cupo de Brevo, y confirmar no lo gasta. Ver DEFAULT_THROTTLE_
     # RATES en settings.py para la cuenta completa.
+    #
+    # "envio_correo_sostenido" Y NO "password_reset_sostenido": este
+    # scope lo comparte tambien SolicitarVerificacionEmailView, porque
+    # las dos gastan el MISMO cupo de Brevo -- ver el comentario largo en
+    # settings.py sobre por que no llevan cada una el suyo.
     throttle_classes = [RealIpScopedRateThrottle, RealIpSostenidoScopedRateThrottle]
     throttle_scope = "password_reset"
-    throttle_scope_sostenido = "password_reset_sostenido"
+    throttle_scope_sostenido = "envio_correo_sostenido"
 
     def post(self, request):
         entrada = SolicitarResetPasswordSerializer(data=request.data)
@@ -131,3 +137,63 @@ class ConfirmarResetPasswordView(APIView):
         )
 
         return Response({"detail": "Contraseña actualizada correctamente."})
+
+
+class SolicitarVerificacionEmailView(APIView):
+    """POST /api/verificar-email/ — manda un código de 6 dígitos al correo
+    de la cuenta AUTENTICADA, para confirmar que de verdad es suya.
+
+    AUTENTICADO, Y ESA ES LA DIFERENCIA DE FONDO CON EL RESTABLECIMIENTO
+    DE CONTRASEÑA. SolicitarResetPasswordView es AllowAny porque quien lo
+    llama puede no tener sesión todavía, y por eso tiene que responder
+    igual exista o no la cuenta (anti-enumeración). Aquí no hace falta
+    nada de eso: IsAuthenticated ya prueba que quien pide el código es
+    dueño de la cuenta, con su propio access token. Un tercero no puede
+    pedir el código de otra persona aunque sepa su correo.
+    """
+
+    permission_classes = [IsAuthenticated]
+    # Mismo scope sostenido que SolicitarResetPasswordView, a proposito
+    # -- ver el comentario de esa vista y el de settings.py.
+    throttle_classes = [RealIpScopedRateThrottle, RealIpSostenidoScopedRateThrottle]
+    throttle_scope = "verificar_email"
+    throttle_scope_sostenido = "envio_correo_sostenido"
+
+    def post(self, request):
+        if request.user.email_verificado:
+            # No es un error -- es el estado que se pedía lograr. Pedirlo
+            # de nuevo no debe gastar un correo ni confundir con un 400.
+            return Response({"detail": "Tu correo ya está verificado."})
+
+        services.verificacion_email_solicitar(usuario=request.user)
+        return Response({"detail": "Te enviamos un código a tu correo."})
+
+
+class ConfirmarVerificacionEmailView(APIView):
+    """POST /api/verificar-email/confirmar/ — valida el código de 6
+    dígitos contra la cuenta autenticada y marca su correo como
+    verificado."""
+
+    permission_classes = [IsAuthenticated]
+    # Tope de FUERZA BRUTA contra el codigo, no de cupo de correo: esta
+    # vista no envia nada. Scope propio y sin sostenido -- ver
+    # DEFAULT_THROTTLE_RATES en settings.py.
+    throttle_classes = [RealIpScopedRateThrottle]
+    throttle_scope = "verificar_email_confirmar"
+
+    def post(self, request):
+        entrada = ConfirmarVerificacionEmailSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+
+        verificado = services.verificacion_email_confirmar(
+            usuario=request.user, codigo=entrada.validated_data["codigo"]
+        )
+        if not verificado:
+            # 400 y no 404/422: es un dato de entrada incorrecto (el
+            # codigo), el mismo tratamiento que un password invalido en
+            # el serializer de arriba -- no se distingue "no existe tal
+            # codigo" de "ya caduco" para no regalarle a quien adivina
+            # informacion sobre CUAL de los dos paso.
+            return Response({"detail": "Código incorrecto o caducado."}, status=400)
+
+        return Response({"detail": "Correo verificado correctamente."})

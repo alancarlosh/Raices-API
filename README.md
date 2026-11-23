@@ -288,6 +288,19 @@ palabra en varias lenguas originarias. Ver `apps/progress/services.py`.
 - `GET /api/me/` — username/email/rol del usuario autenticado (a partir del
   JWT), para que el frontend no dependa de datos capturados en el momento del
   login/registro (pueden desincronizarse entre dispositivos/sesiones).
+- `POST /api/verificar-email/` / `POST /api/verificar-email/confirmar/` —
+  código de 6 dígitos por correo para confirmar que el usuario autenticado
+  es dueño de su dirección. A diferencia de `restablecer-password/`, requiere
+  sesión (`IsAuthenticated`): no hay enumeración de correos que evitar, quien
+  llama ya probó ser dueño de la cuenta al iniciar sesión. El código vale 15
+  minutos y se consume al primer intento correcto (uno nuevo invalida
+  cualquiera anterior sin usar). `solicitar` limitado por IP, 5/min (scope
+  `"verificar_email"`) **y** comparte con `restablecer-password/` el mismo
+  scope sostenido (`"envio_correo_sostenido"`, 12/hora) porque las dos
+  gastan el mismo cupo diario de Brevo — ver `config/settings.py`.
+  `confirmar` limitado aparte, 10/min (scope `"verificar_email_confirmar"`),
+  contra adivinar el código por fuerza bruta; no lleva sostenido porque no
+  manda correo.
 - `POST /api/objetos/<id>/descubrir/` — marca un objeto como descubierto.
 - `POST /api/objetos/<id>/intento-escritura/` — body `{"texto_ingresado": "..."}`.
 - `GET /api/progreso/` — `{"escenas": [...], "total": {...}}`, cada uno con

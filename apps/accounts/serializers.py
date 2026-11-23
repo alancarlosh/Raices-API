@@ -42,6 +42,13 @@ class SolicitarResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
 
+class ConfirmarVerificacionEmailSerializer(serializers.Serializer):
+    # Largo fijo: un codigo de 6 digitos que no mida 6 ya es invalido, y
+    # decirlo en el propio serializer evita gastar una llamada al
+    # servicio (y una fila de la tabla) en algo que nunca va a coincidir.
+    codigo = serializers.CharField(min_length=6, max_length=6)
+
+
 class ConfirmarResetPasswordSerializer(serializers.Serializer):
     uid = serializers.CharField()
     token = serializers.CharField()
